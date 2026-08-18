@@ -1542,6 +1542,11 @@ def main(argv: list[str] | None = None) -> None:
         help="Serper+BS4+Claude: uzupelnij braki statystyk (JSON → walidacja → Excel)",
     )
     parser.add_argument("--no-fill-missing", action="store_true", help="Wylacz uzupelnianie luk")
+    parser.add_argument(
+        "--send-mail",
+        action="store_true",
+        help="Wyslij predykcje_2026.xlsx na MAIL_TO (Gmail SMTP)",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -1696,6 +1701,15 @@ def main(argv: list[str] | None = None) -> None:
     if "metoda" in predictions.columns:
         _safe_print(f"Metody: {predictions['metoda'].value_counts().to_dict()}")
     _safe_print(f"Plik: {path}")
+    if args.send_mail:
+        try:
+            import send_mail as mail
+
+            info = mail.send_excel(path)
+            _safe_print(f"Mail: {Path(info['file']).name} → {info['to']}")
+        except Exception as exc:
+            logger.warning("Wysylka maila pominieta: %s", exc)
+            _safe_print(f"Wysylka maila pominieta: {exc}")
 
 
 if __name__ == "__main__":
