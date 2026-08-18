@@ -1,65 +1,86 @@
-# Projekt stawki na mecze
+# Prognoza meczy
 
-Scraper i eksport statystyk piłkarskich pod analizę kursów / stawek.
+Pipeline predykcji piłkarskich: historia lig Aleksa → braki statystyk (JSON → Serper → strona → Claude) → Excel po ukraińsku → mail w poniedziałek.
 
-**Lokalizacja:** `C:\Users\svinc\Documents\Projekt stawki na mecze`
+Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax1993/prognoza-meczy)
 
 ---
 
 ## Spis treści
 
-1. [Co robi projekt](#co-robi-projekt)
-2. [Wymagania i instalacja](#wymagania-i-instalacja)
-3. [Szybki start](#szybki-start)
-4. [Moduły](#moduły)
-5. [Pliki wyjściowe](#pliki-wyjściowe)
-6. [Cache i logi](#cache-i-logi)
-7. [Testy](#testy)
-8. [Struktura katalogów](#struktura-katalogów)
-9. [Ograniczenia](#ograniczenia)
+1. [Co robi](#co-robi)
+2. [Wynik: Excel](#wynik-excel)
+3. [Szybki start (lokalnie)](#szybki-start-lokalnie)
+4. [Klucze API i sekrety](#klucze-api-i-sekrety)
+5. [Gmail](#gmail)
+6. [GitHub Actions (cron)](#github-actions-cron)
+7. [Jak liczona jest predykcja](#jak-liczona-jest-predykcja)
+8. [Moduły](#moduły)
+9. [Testy](#testy)
+10. [Ograniczenia](#ograniczenia)
 
 ---
 
-## Co robi projekt
+## Co robi
 
-| Moduł | Opis |
-|--------|------|
-| `scrape_footystats.py` | Pobiera dzisiejsze mecze z [footystats.org](https://footystats.org/ru/), zapisuje **Excel** + cache JSON |
-| `export_aleks_stats.py` | Eksportuje **tylko wybrane ligi i 6 statystyk** do CSV (lista Aleksa) |
-| `preview_pandas.py` | Moduł podglądu danych w **pandas** (load / preview / summarize) |
-| `predykcje.py` | Predykcje meczów 2026 + Excel z pivotami i wykresami |
-| `predykcje_max.py` | Predykcje MAX — rozszerzone rynki + backtest + benchmark |
-| `enrich_scores.py` | Wynik **результат** + statystyki per drużyna z football-data.co.uk |
-| `monthly_summary.py` | Miesięczne średnie statystyk per drużyna |
-| `preview_data.ipynb` | Podgląd w **Jupyter Lab** (cache / Excel / CSV Aleksa) |
-| `preview_data.py` | Ten sam podgląd jako skrypt / Interactive Window |
-| `tests/` | Testy jednostkowe, integracyjne i regresyjne |
+1. Bierze mecze lig Aleksa od **13.08.2026** (`aleks_ligi_stats.xlsx`) i dokleja nadchodzące z BBC.
+2. Uzupełnia braki (faule, rożne, kartki, strzały) **tylko z weryfikowalnych źródeł** — bez zmyślania liczb.
+3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5**.
+4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**).
+5. W poniedziałek wysyła ten plik na Gmail.
 
-### Ligi Aleksa (eksport CSV)
+Kolejność uzupełniania luk (obowiązkowa):
 
-- Premier League (APL)
-- La Liga
-- Serie A
-- Bundesliga
-- Bundesliga 2
-- Eredivisie
-- Super League (Szwajcaria)
-- Allsvenskan (Szwecja)
-- Eliteserien (Norwegia)
+Excel z dysku → skan komórek → `cache/missing_data.json` → dopiero potem Serper + HTML + Claude → walidacja → JSON → Excel.
 
-### Statystyki w CSV Aleksa
+Przyszłe mecze **nie muszą** mieć faktu FT. Kalendarz idzie do osobnego arkusza.
 
-Nagłówki kolumn są po **ukraińsku**:
+---
 
-1. **оз** (BTTS) — обидві заб'ють (`так` / `ні`)
-2. **фоли** — suma fauli; dodatkowo **фоли_господар** / **фоли_гість** (per drużyna)
-3. **кутові** — suma rożnych; **кутові_господар** / **кутові_гість**
-4. **жовті_картки** — suma kartek; **жовті_картки_господар** / **жовті_картки_гість**
-5. **удари** — suma strzałów; **удари_господар** / **удари_гість**
-6. **удари_в_площину** — strzały w bramkę; **удари_в_площину_господар** / **удари_в_площину_гість**
+## Wynik: Excel
 
-Dodatkowo (identyfikacja meczu): `ліга`, `дата`, `господар`, `гість`, **`результат`** (np. `2:1`).  
-Statystyki per drużyna i wynik dociągasz z [football-data.co.uk](https://www.football-data.co.uk/):
+Plik: **`predykcje_2026.xlsx`**
+
+| Arkusz | Zawartość |
+|--------|-----------|
+| **Матчі_2026** | Rozegrane mecze: wynik, **Чи обидві забили?**, faule / rożne / kartki / strzały |
+| **Майбутні_матчі** | Kalendarz (ліга, дата, господар, гість) — bez wyniku |
+| **Прогнози** | Typy. Przy braku FT kolumna `результат` = typowany wynik (`прогноз_рахунок`) |
+
+Linie O/U są stałe celowo: `лінія_кутові` = 9.5, `лінія_жовті` = 3.5. Różne per mecz są `очікувані_*` i `прогноз_*` (більше / менше).
+
+Jeśli Excel jest otwarty (Permission denied), zapis idzie do `predykcje_2026_wypelnione.xlsx`.
+
+---
+
+## Szybki start (lokalnie)
+
+Python **3.10+** (testowane na 3.13).
+
+```powershell
+git clone https://github.com/Bigmax1993/prognoza-meczy.git
+cd prognoza-meczy
+python -m pip install -r requirements.txt
+```
+
+Klucze **User env** (nie `.env` w gicie):
+
+```powershell
+$env:ANTHROPIC_API_KEY = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY','User')
+$env:SERPER_API_KEY    = [Environment]::GetEnvironmentVariable('SERPER_API_KEY','User')
+python predykcje.py --fill-missing
+```
+
+Opcje:
+
+```powershell
+python predykcje.py --fill-missing --send-mail   # pipeline + mail
+python send_mail.py                              # sam Excel na MAIL_TO
+python predykcje.py --no-fill-missing            # bez Serper/Claude
+python -m pytest tests -q
+```
+
+Źródło historii: `aleks_ligi_stats.xlsx`. Dociągnięcie wyników/statystyk:
 
 ```powershell
 python enrich_scores.py
@@ -68,276 +89,93 @@ python monthly_summary.py --year 2026
 
 ---
 
-## Wymagania i instalacja
+## Klucze API i sekrety
 
-- Python **3.10+** (testowane na 3.13)
-- Windows (ścieżki projektu)
+**Nie commituj** `.env` ani haseł. Lokalnie: zmienne User w Windows. Na GitHubie: **Settings → Secrets and variables → Actions**.
 
-```powershell
-cd "C:\Users\svinc\Documents\Projekt stawki na mecze"
-python -m pip install -r requirements.txt
-python -m playwright install chromium
-```
+| Secret | Do czego |
+|--------|----------|
+| `ANTHROPIC_API_KEY` | Claude: wyciąga liczby ze strony (null, jeśli ich nie ma) |
+| `SERPER_API_KEY` | Szukanie stron ze statystykami meczu |
+| `GMAIL_USER` | Nadawca SMTP, np. `svinchak1993@gmail.com` |
+| `GMAIL_APP_PASSWORD` | Hasło do aplikacji Gmail (16 znaków), nie zwykłe hasło |
+| `MAIL_TO` | Odbiorca Excela, np. `Swinczakaleksy@gmail.com` |
 
-### Zależności (`requirements.txt`)
-
-- `beautifulsoup4`, `lxml` — parsowanie HTML
-- `requests`, `curl_cffi` — pobieranie HTTP
-- `playwright` — Chromium **headless** (bez okna przeglądarki)
-- `openpyxl`, `pandas` — Excel / podgląd
-- `jupyterlab`, `ipykernel` — Jupyter Lab / notebooki
-- `pytest` — testy
-
-### Biblioteki wbudowane Pythona
-
-- **`json`** — zapis i odczyt cache (`cache/*.json`, w tym `aleks_stats_cache.json`)
-- **`logging`** — logi do `logs/scraper_*.log` oraz `logs/aleks_export_*.log`
+Przy 401 Anthropic pipeline **się zatrzymuje** (bez spamu requestów).
 
 ---
 
-## Szybki start
+## Gmail
 
-### 1. Scraper FootyStats (mecze dnia → Excel)
+Wysyłka: SMTP `smtp.gmail.com` + załącznik `predykcje_2026.xlsx`.  
+Kopia ląduje w **Wysłanych** nadawcy (IMAP, folder Wysłane / Sent Mail).
 
-```powershell
-cd "C:\Users\svinc\Documents\Projekt stawki na mecze"
-python scrape_footystats.py
-```
+Włącz IMAP: Gmail → Ustawienia → Przekazywanie i POP/IMAP → **Włącz IMAP**.
 
-- Bez `--refresh` korzysta z cache (jeśli świeży).
-- Wymuszenie ponownego pobrania:
+Hasło do aplikacji: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (wymagana weryfikacja dwuetapowa).
 
-```powershell
-python scrape_footystats.py --refresh
-python scrape_footystats.py --refresh --log-level DEBUG
-```
+---
 
-**Playwright działa w tle** (`headless=True`, bez otwierania okna Chrome).
+## GitHub Actions (cron)
 
-Kolejność pobierania HTML:
+Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (CET) będzie +1 h.
 
-1. Playwright (headless)
-2. `curl_cffi` (impersonacja Chrome)
-3. `requests`
+| Workflow | Kiedy | Co |
+|----------|--------|-----|
+| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` |
+| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **02:00** | pobiera artifact z ostatniego udanego pipeline i wysyła mail |
 
-### 2. Eksport lig Aleksa → CSV
+Ręcznie: **Actions** → wybrany workflow → **Run workflow**.  
+Najpierw odpal pipeline, potem wysyłkę — mail bez niedzielnego artifactu się wywali.
 
-```powershell
-python export_aleks_stats.py
-```
+---
 
-Wynik: `aleks_ligi_stats.xlsx` w katalogu projektu.
+## Jak liczona jest predykcja
 
-Źródło: [football-data.co.uk](https://www.football-data.co.uk/) (sezony 2024/25 i 2025/26).
+- Forma ostatnich **5** meczów (70%) + sezon (30%).
+- 1X2: Poisson z oczekiwanych goli (remis **nie** jest stały).
+- BTTS: średni % «tak» z formy obu drużyn, próg 50%.
+- Rożne / kartki: suma średnich obu drużyn vs linia 9.5 / 3.5.
+- Za mało historii (`< 3` mecze): status `пропуск`, przyczyna `замало_даних`.
 
-### 3. Podgląd danych (pandas / Jupyter Lab)
-
-Moduł `preview_pandas.py`:
-
-```python
-from preview_pandas import load_matches, load_aleks, preview_dataframe, summarize
-
-df = load_matches()
-preview_dataframe(df, n=10)
-summarize(df)
-```
-
-Jupyter Lab:
-
-```powershell
-cd "C:\Users\svinc\Documents\Projekt stawki na mecze"
-python -m jupyter lab
-```
-
-W przeglądarce otwórz `preview_data.ipynb` i uruchamiaj komórki (`Shift+Enter`).
-
-Alternatywa bez Jupyter:
-
-```powershell
-python preview_data.py
-# albo bezpośrednio moduł:
-python preview_pandas.py
-```
-
-### 4. Predykcje 2026 → Excel
-
-Moduł `predykcje.py` — predykcje zwycięzcy, wyniku i BTTS **tylko dla roku 2026**:
-
-```powershell
-python predykcje.py
-```
-
-Wynik: `predykcje_2026.xlsx` z arkuszami:
-- `Mecze_2026`, `Predykcje`, `Srednie_druzyny`, `Srednie_ligi`
-- `Pivot_{Liga}` — tabela przestawna per liga
-- `Podsumowanie_miesiaca` — średnie miesięczne per drużyna (2026)
-- `Wykresy` — wykresy kołowe per liga
-
-Metoda: forma ostatnich 5 meczów (70%) + średnie sezonowe (30%); Over/Under rożne 9.5 i kartki 3.5; backtest na 2025 w arkuszach `Backtest_2025`.
-
-### 5. Predykcje MAX → Excel
-
-Rozszerzony moduł `predykcje_max.py` — wszystkie rynki z audytu danych:
-
-```powershell
-python predykcje_max.py
-```
-
-Wynik: `predykcje_max_2026.xlsx` z arkuszami:
-- **Osobny arkusz per liga** (np. `Premier League`, `La Liga`) — prognozy w tabeli Excel
-- `Топ_типи` — najlepsze typy dnia
-- `Ознаки_{Liga}` — macierz cech (forma, H2H, ranking)
-- `Середні_команди`, `Середні_ліги`, `Підсумок_місяця`
-- `Бектест_2025`, `Бектест_{Liga}`, `Порівняння`, `Аудит`, `Графіки`
-
-Wszystkie arkusze: **tabele Excel** + **nagłówki i wartości po ukraińsku** (`більше`/`менше`, `так`/`ні`, `висока`/`середня`/`низька`).
-
-Metoda: Warstwa 1 (heurystyka + Poisson-lite) + Warstwa 2 (kalibracja progów per liga na 2024).
-Nordic (Allsvenskan/Eliteserien/Super League): tylko rynki wynik/BTTS/O/U goli.
-
-Audyt danych przed predykcją:
-
-```powershell
-python scripts/audyt_danych.py
-```
+Rozszerzony wariant: `python predykcje_max.py` → `predykcje_max_2026.xlsx`.
 
 ---
 
 ## Moduły
 
-### `scrape_footystats.py`
-
-| Funkcja / obszar | Opis |
-|------------------|------|
-| `_is_cloudflare_block` | Wykrywa stronę Cloudflare |
-| `fetch_with_playwright` | Pobieranie headless (bez UI) |
-| `fetch_html` | Łańcuch metod pobierania |
-| `parse_matches` | HTML → lista meczów |
-| `save_excel` / cache JSON | Zapis wyników |
-| `main` | CLI: `--refresh`, `--log-level` |
-
-Kolumny Excela / cache meczów:
-
-`Data`, `Kraj`, `Liga`, `Godzina`, `Gospodarz`, `Forma gospodarza`, `Gość`, `Forma gościa`, `Kurs 1`, `Kurs X`, `Kurs 2`, `Status`, `Link`
-
-### `export_aleks_stats.py`
-
-- Pobiera CSV z football-data.co.uk
-- Filtruje ligi z listy Aleksa
-- Liczy sumy meczowe (faule, rożne, kartki, strzały) oraz BTTS
-- Zapisuje `aleks_ligi_stats.xlsx`
-
-**Uwaga:** dla Super League / Allsvenskan / Eliteserien publiczny format „new” zawiera głównie wyniki → zwykle wypełnione jest tylko **оз** (BTTS); pozostałe pola mogą być puste.
-
----
-
-## Pliki wyjściowe
-
-| Plik | Opis |
+| Plik | Rola |
 |------|------|
-| `predykcje_2026.xlsx` | Predykcje baseline (forma + O/U) |
-| `predykcje_max_2026.xlsx` | Predykcje MAX (wszystkie rynki + benchmark) |
-| `AUDYT_DANYCH.md` | Raport audytu danych (kompletność, korelacje) |
-| `aleks_ligi_stats.xlsx` | Statystyki lig Aleksa |
-| `preview_head.csv` / `.txt` | Podgląd 10 wierszy |
-| `cache/matches_cache.json` | Cache meczów |
-| `cache/html_cache.json` | Ostatni HTML |
-| `cache/cookies_cache.json` | Cookies (Cloudflare / sesja) |
-| `logs/scraper_YYYY-MM-DD.log` | Logi dziennika |
+| `predykcje.py` | Pipeline 2026, Excel UA, `--fill-missing`, `--send-mail` |
+| `fill_missing.py` | JSON → Serper → BS4 → Claude → walidacja |
+| `send_mail.py` | Gmail SMTP + kopia w Wysłanych |
+| `upcoming.py` | Nadchodzące mecze (BBC) |
+| `team_names.py` | Aliasy klubów (bez tłumaczenia nazw) |
+| `enrich_scores.py` | Wyniki/statystyki z football-data.co.uk |
+| `export_aleks_stats.py` | Eksport lig Aleksa |
+| `scrape_footystats.py` | Scraper FootyStats (mecze dnia) |
+| `predykcje_max.py` | Predykcje MAX |
+| `scripts/audyt_danych.py` | Audyt źródła |
 
----
-
-## Cache i logi
-
-- Cache meczów: domyślnie ważny **30 minut** (TTL).
-- Cookies: TTL ok. **60 minut**.
-- `--refresh` pomija cache meczów i ponownie pobiera stronę.
-- Logi: katalog `logs/`, poziom przez `--log-level INFO|DEBUG|WARNING`.
+Ligi: Premier League, La Liga, Serie A, Bundesliga, Bundesliga 2, Eredivisie, Super League, Allsvenskan, Eliteserien.
 
 ---
 
 ## Testy
 
 ```powershell
-cd "C:\Users\svinc\Documents\Projekt stawki na mecze"
-python -m pytest tests -v
+python -m pytest tests -q
 ```
 
-### Rodzaje testów
-
-| Plik | Typ | Zakres |
-|------|-----|--------|
-| `tests/test_unit.py` | jednostkowe | Cloudflare, helpery, cookies, cache JSON |
-| `tests/test_integration.py` | integracyjne | parse → cache → Excel, fetch (mock), `main()` |
-| `tests/test_regression.py` | regresyjne | schemat kolumn, golden CSV, minimalna liczba meczów |
-| pozostałe `test_*.py` | szczegółowe | cache, fetch, parse, pipeline, excel, logging |
-
-Odświeżenie golden fixture:
-
-```powershell
-python tests/generate_golden.py
-```
-
----
-
-## Struktura katalogów
-
-```
-Projekt stawki na mecze/
-├── scrape_footystats.py      # scraper FootyStats
-├── export_aleks_stats.py      # CSV lig Aleksa
-├── preview_pandas.py           # moduł podglądu pandas
-├── predykcje.py                # predykcje 2026 → Excel
-├── predykcje_max.py            # predykcje MAX (rozszerzone rynki)
-├── scripts/audyt_danych.py     # audyt aleks_ligi_stats.xlsx
-├── enrich_scores.py            # wynik + statystyki per drużyna
-├── monthly_summary.py          # podsumowanie miesięczne drużyn
-├── preview_data.ipynb          # podgląd w Jupyter Lab
-├── preview_data.py             # podgląd pandas (skrypt)
-├── requirements.txt
-├── pytest.ini
-├── aleks_ligi_stats.xlsx
-├── footystats_mecze.csv
-├── cache/
-├── logs/
-└── tests/
-    ├── conftest.py
-    ├── test_unit.py
-    ├── test_integration.py
-    ├── test_regression.py
-    ├── fixtures/
-    │   ├── sample_html.py
-    │   └── golden/sample_mecze.csv
-    └── ...
-```
+Kluczowe: `tests/test_predykcje.py`, `tests/test_fill_missing.py`, `tests/test_send_mail.py`.
 
 ---
 
 ## Ograniczenia
 
-1. **Cloudflare** na FootyStats może zablokować pobieranie — Playwright headless + cookies łagodzą problem, ale nie gwarantują 100% sukcesu.
-2. **Darmowe API FootyStats** (`key=example`) ogranicza dostęp do części lig (głównie Premier League).
-3. **Super League / Allsvenskan / Eliteserien** — w publicznym CSV football-data często brak fauli/rożnych/kartek/strzałów (tylko wynik → BTTS).
-4. Dane historyczne zależą od dostępności plików na football-data.co.uk (sezony `2425`, `2526`).
+- Claude **nie zgaduje** fauli/rożnych/kartek — brak na stronie = puste pole / residual.
+- Nordic (Allsvenskan, Eliteserien, Super League): w publicznym CSV często tylko wynik; reszta z JSON/API albo puste.
+- Cloudflare na FootyStats może blokować scraper.
+- Nie tłumacz nazw klubów (Arsenal, Sarpsborg 08, Elfsborg…).
 
----
-
-## Typowy workflow
-
-```powershell
-cd "C:\Users\svinc\Documents\Projekt stawki na mecze"
-
-# 1) Mecze dnia z FootyStats
-python scrape_footystats.py --refresh
-
-# 2) Statystyki lig pod stawki (Aleks)
-python export_aleks_stats.py
-
-# 3) Podgląd w Jupyter Lab
-python -m jupyter lab
-
-# 4) Testy po zmianach w kodzie
-python -m pytest tests -q
-```
-
-W notebooku `preview_data.ipynb` filtruj po `ліга`, `оз`, progach `кутові` / `жовті_картки` itd. Alternatywnie otwórz `aleks_ligi_stats.xlsx` w Excelu.
+Typowy przebieg tygodnia: niedziela pipeline → poniedziałek mail z `predykcje_2026.xlsx`.
