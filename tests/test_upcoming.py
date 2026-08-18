@@ -1,0 +1,128 @@
+"""Testy upcoming.py (bez sieci)."""
+
+from __future__ import annotations
+
+from datetime import date
+
+import pandas as pd
+import pytest
+
+import upcoming as up
+
+
+def test_complete_match_date():
+    assert up.complete_match_date("18/08", year=2026) == "18/08/2026"
+    assert up.complete_match_date("18/08/2026") == "18/08/2026"
+
+
+def test_map_team_to_known():
+    known = {
+        "Premier League": ["Arsenal", "Man City", "Chelsea", "Nott'm Forest"],
+        "Super League": ["Zurich", "Basel"],
+        "Allsvenskan": ["Goteborg", "Elfsborg"],
+        "La Liga": ["Ath Bilbao", "Sevilla"],
+    }
+    assert up.map_team_to_known("Arsenal", "Premier League", known) == "Arsenal"
+    assert up.map_team_to_known("Arsenal FC", "Premier League", known) == "Arsenal"
+    assert up.map_team_to_known("Manchester City", "Premier League", known) == "Man City"
+    assert up.map_team_to_known("Nottingham Forest", "Premier League", known) == "Nott'm Forest"
+    assert up.map_team_to_known("ZÃ¼rich", "Super League", known) == "Zurich"
+    assert up.map_team_to_known("IFK Gbg", "Allsvenskan", known) == "Goteborg"
+    assert up.map_team_to_known("Athletic Club", "La Liga", known) == "Ath Bilbao"
+
+
+def test_rows_to_aleks_fixtures_filters_leagues():
+    rows = [
+        {
+            "Kraj": "England",
+            "Liga": "Premier League",
+            "Gospodarz": "Arsenal",
+            "Gość": "Chelsea",
+            "Data": "18/08",
+        },
+        {
+            "Kraj": "England",
+            "Liga": "National League",
+            "Gospodarz": "Barnet",
+            "Gość": "York",
+            "Data": "18/08",
+        },
+    ]
+    known = {"Premier League": ["Arsenal", "Chelsea"]}
+    df = up.rows_to_aleks_fixtures(rows, match_day=date(2026, 8, 18), known=known)
+    assert len(df) == 1
+    assert df.iloc[0]["ліга"] == "Premier League"
+    assert df.iloc[0]["дата"] == "18/08/2026"
+    assert df.iloc[0]["результат"] == ""
+
+
+def test_rows_to_aleks_keeps_premapped_la_liga():
+    rows = [
+        {
+            "Kraj": "",
+            "Liga": "La Liga",
+            "_aleks_liga": "La Liga",
+            "Gospodarz": "Real Madrid",
+            "Gość": "Osasuna",
+            "Data": "19/08/2026",
+        }
+    ]
+    df = up.rows_to_aleks_fixtures(rows, match_day=date(2026, 8, 19), known={})
+    assert len(df) == 1
+    assert df.iloc[0]["ліга"] == "La Liga"
+
+
+def test_parse_bbc_fixtures():
+    html = """
+    <html><body>
+      <div class="ssrcss-1ox7t1a-Container">
+        <h2 class="ssrcss-m22vfq-GroupHeader">Premier League</h2>
+        <span class="visually-hidden">Arsenal versus Chelsea kick off 15:00</span>
+        <span class="visually-hidden">Everton versus Crystal Palace kick off 17:30</span>
+      </div>
+      <div class="ssrcss-1ox7t1a-Container">
+        <h2 class="ssrcss-m22vfq-GroupHeader">Brazilian Serie A</h2>
+        <span class="visually-hidden">Flamengo versus Palmeiras kick off 20:00</span>
+      </div>
+    </body></html>
+    """
+    rows = up.parse_bbc_fixtures(html, date(2026, 8, 22))
+    assert len(rows) == 2
+    assert {r["Liga"] for r in rows} == {"Premier League"}
+    assert rows[0]["Gospodarz"] == "Arsenal"
+    assert rows[0]["Gość"] == "Chelsea"
+
+
+def test_merge_upcoming_skips_duplicates():
+    existing = pd.DataFrame(
+        [
+            {
+                "ліга": "Premier League",
+                "дата": pd.Timestamp("2026-08-18"),
+                "господар": "Arsenal",
+                "гість": "Chelsea",
+                "результат": "1:0",
+            }
+        ]
+    )
+    upcoming = pd.DataFrame(
+        [
+            {
+                "ліга": "Premier League",
+                "дата": "18/08/2026",
+                "господар": "Arsenal",
+                "гість": "Chelsea",
+                "результат": "",
+            },
+            {
+                "ліга": "La Liga",
+                "дата": "18/08/2026",
+                "господар": "Real Madrid",
+                "гість": "Osasuna",
+                "результат": "",
+            },
+        ]
+    )
+    out = up.merge_upcoming(existing, upcoming)
+    assert len(out) == 2
+    assert "Osasuna" in set(out["гість"].astype(str))

@@ -1,0 +1,8 @@
+ok=False
+len=0
+cf_block=None
+title=
+has_league=False
+has_match=False
+match_date=
+matches=0

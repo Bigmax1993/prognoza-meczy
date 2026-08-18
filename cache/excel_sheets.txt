@@ -1,0 +1,15 @@
+Mecze_2026
+Predykcje
+Srednie_druzyny
+Srednie_ligi
+Pivot_Allsvenskan
+Pivot_Bundesliga
+Pivot_Bundesliga 2
+Pivot_Eliteserien
+Pivot_Eredivisie
+Pivot_La Liga
+Pivot_Premier League
+Pivot_Serie A
+Pivot_Super League
+Wykresy
+charts=9
