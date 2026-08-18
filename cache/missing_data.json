@@ -1,0 +1,998 @@
+{
+  "updated_at": "2026-08-18T17:53:24",
+  "as_of": "18/08/2026",
+  "summary": {
+    "excel_rows": 80,
+    "gaps": 15,
+    "pending": 0,
+    "filled": 15,
+    "skipped_future": 42
+  },
+  "gaps": [
+    {
+      "key": "2026-08-14|elfsborg|vasteras sk",
+      "league": "Allsvenskan",
+      "date": "14/08/2026",
+      "home": "Elfsborg",
+      "away": "Vasteras SK",
+      "result": "3:0",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "фоли_господар": 13,
+        "фоли_гість": 17,
+        "кутові_господар": 4,
+        "кутові_гість": 2,
+        "жовті_картки_господар": 1,
+        "жовті_картки_гість": 3,
+        "удари_господар": 14,
+        "удари_гість": 4,
+        "удари_в_площину_господар": 8,
+        "удари_в_площину_гість": 1,
+        "фоли": 30,
+        "кутові": 6,
+        "жовті_картки": 4,
+        "удари": 18,
+        "удари_в_площину": 9
+      },
+      "query": "Elfsborg vs Vasteras SK 14/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.foxsports.com/soccer/swedish-allsvenskan-if-elfsborg-vs-vasteras-sk-aug-14-2026-game-boxscore-649742?tab=boxscore",
+          "title": "IF Elfsborg vs. Vasteras SK - Boxscore: Aug 14, 2026",
+          "accepted": true,
+          "reason": "Page is about Elfsborg vs Vasteras SK on Aug 14 2026, stats present but no final score shown in text (known FT 3:0 accepted)"
+        }
+      ],
+      "source_url": "https://www.foxsports.com/soccer/swedish-allsvenskan-if-elfsborg-vs-vasteras-sk-aug-14-2026-game-boxscore-649742?tab=boxscore",
+      "reason": "Page is about Elfsborg vs Vasteras SK on Aug 14 2026, stats present but no final score shown in text (known FT 3:0 accepted)"
+    },
+    {
+      "key": "2026-08-14|rosenborg|viking",
+      "league": "Eliteserien",
+      "date": "14/08/2026",
+      "home": "Rosenborg",
+      "away": "Viking",
+      "result": "2:1",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "кутові_господар": 9,
+        "кутові_гість": 6,
+        "кутові": 15,
+        "фоли_господар": 17,
+        "фоли_гість": 10,
+        "жовті_картки_господар": 0,
+        "жовті_картки_гість": 0,
+        "удари_господар": 18,
+        "удари_гість": 6,
+        "удари_в_площину_господар": 7,
+        "удари_в_площину_гість": 1,
+        "фоли": 27,
+        "жовті_картки": 0,
+        "удари": 24,
+        "удари_в_площину": 8
+      },
+      "query": "Rosenborg vs Viking 14/08/2026 Eliteserien football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://statz.ai/team/viking/corners",
+          "title": "Viking Corners — Stats, Over/Under Hit Rates & Match Log",
+          "accepted": true,
+          "reason": "Page shows Viking match log with Rosenborg on 14.08.2026, away score 2-1, corners Viking 6, Rosenborg 9"
+        },
+        {
+          "url": "https://valuestats.com/en/match/19629598-rosenborg-vs-viking",
+          "title": "Estadísticas Rosenborg vs Viking | Eliteserien",
+          "accepted": true,
+          "reason": "Page is about Rosenborg vs Viking, Eliteserien, 14/08/2026, FT 2-1, with full stats"
+        }
+      ],
+      "source_url": "https://valuestats.com/en/match/19629598-rosenborg-vs-viking",
+      "reason": "Page is about Rosenborg vs Viking, Eliteserien, 14/08/2026, FT 2-1, with full stats"
+    },
+    {
+      "key": "2026-08-15|kfum oslo|lillestrom",
+      "league": "Eliteserien",
+      "date": "15/08/2026",
+      "home": "KFUM Oslo",
+      "away": "Lillestrom",
+      "result": "1:1",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "жовті_картки_господар": 2,
+        "жовті_картки_гість": 1,
+        "удари_господар": 9,
+        "удари_гість": 15,
+        "жовті_картки": 3,
+        "удари": 24,
+        "фоли_господар": 12,
+        "фоли_гість": 13,
+        "кутові_господар": 3,
+        "кутові_гість": 7,
+        "удари_в_площину_господар": 3,
+        "удари_в_площину_гість": 4,
+        "фоли": 25,
+        "кутові": 10,
+        "удари_в_площину": 7
+      },
+      "query": "KFUM Oslo vs Lillestrom 15/08/2026 Eliteserien football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.fotmob.com/matches/kfum-vs-lillestrom/ylwi7",
+          "title": "KFUM vs Lillestrøm - live score, predicted lineups and H2H ...",
+          "accepted": true,
+          "reason": "Page confirms KFUM Oslo vs Lillestrøm, 15 Aug 2026, Eliteserien, FT 1-1"
+        },
+        {
+          "url": "https://www.bbc.com/sport/football/live/cm2dk8jnk5g6t",
+          "title": "KFUM vs Lillestrøm: Norwegian Eliteserien stats & head-to- ...",
+          "accepted": true,
+          "reason": "Page confirms KFUM 1-1 Lillestrøm on 15 Aug 2026, Norwegian Eliteserien, with full match stats"
+        }
+      ],
+      "source_url": "https://www.bbc.com/sport/football/live/cm2dk8jnk5g6t",
+      "reason": "Page confirms KFUM 1-1 Lillestrøm on 15 Aug 2026, Norwegian Eliteserien, with full match stats"
+    },
+    {
+      "key": "2026-08-15|mjallby|sirius",
+      "league": "Allsvenskan",
+      "date": "15/08/2026",
+      "home": "Mjallby",
+      "away": "Sirius",
+      "result": "4:3",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "фоли_господар": 10,
+        "фоли_гість": 11,
+        "кутові_господар": 7,
+        "кутові_гість": 8,
+        "жовті_картки_господар": 2,
+        "жовті_картки_гість": 3,
+        "удари_господар": 14,
+        "удари_гість": 18,
+        "удари_в_площину_господар": 6,
+        "удари_в_площину_гість": 5,
+        "фоли": 21,
+        "кутові": 15,
+        "жовті_картки": 5,
+        "удари": 32,
+        "удари_в_площину": 11
+      },
+      "query": "Mjallby vs Sirius 15/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.oddscalendar.com/football/sweden/allsvenskan/mjallby-aif-vs-sirius/1494248/stats",
+          "title": "Mjällby AIF vs Sirius Match Stats | Allsvenskan - OddsCalendar",
+          "accepted": true,
+          "reason": "Page confirms Mjällby AIF vs Sirius, 15 Aug 2026, Allsvenskan, FT 4-3, with full stats"
+        }
+      ],
+      "source_url": "https://www.oddscalendar.com/football/sweden/allsvenskan/mjallby-aif-vs-sirius/1494248/stats",
+      "reason": "Page confirms Mjällby AIF vs Sirius, 15 Aug 2026, Allsvenskan, FT 4-3, with full stats"
+    },
+    {
+      "key": "2026-08-16|djurgarden|aik",
+      "league": "Allsvenskan",
+      "date": "16/08/2026",
+      "home": "Djurgarden",
+      "away": "AIK",
+      "result": "1:3",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "жовті_картки_господар": 1,
+        "жовті_картки_гість": 5,
+        "жовті_картки": 6,
+        "удари_господар": 16,
+        "удари_гість": 11,
+        "удари": 27,
+        "фоли_господар": 15,
+        "фоли_гість": 17,
+        "кутові_господар": 5,
+        "кутові_гість": 1,
+        "фоли": 32,
+        "кутові": 6,
+        "удари_в_площину_господар": 3,
+        "удари_в_площину_гість": 4,
+        "удари_в_площину": 7
+      },
+      "query": "Djurgarden vs AIK 16/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.sportsgambler.com/betting-tips/football/djurgarden-vs-aik-prediction-lineups-odds-2026-08-16/",
+          "title": "Djurgarden vs AIK Prediction, Betting Tips, Lineups & Odds | 16 Aug 2026",
+          "accepted": false,
+          "reason": "This is a betting preview/prediction page, not a match report with statistics."
+        },
+        {
+          "url": "https://www.bbc.com/sport/football/live/cre3q53xkdp7t",
+          "title": "Djurgården vs AIK: Allsvenskan stats & head-to-head - BBC Sport",
+          "accepted": true,
+          "reason": "Correct match confirmed: Djurgården 1-3 AIK, 16 Aug 2026, Allsvenskan. Yellow cards extractable from lineups; no fouls/corners/shots data present."
+        },
+        {
+          "url": "https://statz.ai/team/aik/shots-total",
+          "title": "AIK Shots — Stats, Predictions & Bet Builder Markets - Statz AI",
+          "accepted": true,
+          "reason": "Page contains AIK match log for 16 Aug 2026 vs Djurgården, score 1-3, with shot data"
+        },
+        {
+          "url": "https://www.fotmob.com/matches/aik-vs-djurgarden/2q34l2",
+          "title": "Djurgården vs AIK - live score, predicted lineups and H2H stats",
+          "accepted": false,
+          "reason": "validation_dropped"
+        },
+        {
+          "url": "https://www.flashscore.com/match/football/aik-lzqk4S68/djurgarden-4Kh5hPE1/summary/stats/",
+          "title": "Djurgarden v AIK 16/08/2026, Stats - Flashscore.com",
+          "accepted": false,
+          "reason": "Page contains no match statistics - only navigation, ads, and generic content. No stats data available."
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/aik-djurgardens-if/jKsoK",
+          "title": "Djurgårdens IF vs AIK live score, H2H and lineups - Sofascore",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/aik-djurgardens-if/jKsoK"
+        },
+        {
+          "url": "https://www.espn.com/soccer/match/_/gameId/401842786/aik-djurgarden",
+          "title": "Djurgården vs. AIK (Aug 16, 2026) Live Score - ESPN",
+          "accepted": false,
+          "reason": "Page text is empty, no usable stats available"
+        },
+        {
+          "url": "https://scores24.live/en/soccer/m-16-08-2026-djurgardens-aik-prediction",
+          "title": "Djurgarden vs AIK Prediction 16/08/2026 – Odds, Tips & Analysis",
+          "accepted": true,
+          "reason": "Page contains this exact match (Djurgarden vs AIK, 16.08.2026, 1:3) with corners and fouls data"
+        },
+        {
+          "url": "https://www.sofascore.com/football/team/djurgardens-if/1759",
+          "title": "Djurgårdens IF live score, schedule & player stats",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/team/djurgardens-if/1759"
+        },
+        {
+          "url": "https://www.sofascore.com/floorball/match/djurgardens-if-aik/RHbsUQtb",
+          "title": "AIK Djurgårdens IF live score and H2H results",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/floorball/match/djurgardens-if-aik/RHbsUQtb"
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/aik-djurgardens-if-dff/DMsNXc",
+          "title": "Djurgårdens IF DFF vs AIK live score, H2H and lineups",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/aik-djurgardens-if-dff/DMsNXc"
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/djurgardens-u21-aik-fotboll-u21/JcBsNcB",
+          "title": "Djurgardens U21 vs AIK Fotboll U21 live score, H2H and ...",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/djurgardens-u21-aik-fotboll-u21/JcBsNcB"
+        },
+        {
+          "url": "https://footystats.org/sweden/djurgardens-if-vs-aik-fotboll-h2h-stats",
+          "title": "Djurgården vs AIK Stats, H2H, xG",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://footystats.org/sweden/djurgardens-if-vs-aik-fotboll-h2h-stats"
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/swedish-allsvenskan-djurgardens-if-ff-vs-aik-aug-16-2026-game-boxscore-649738",
+          "title": "Djurgardens IF FF vs. AIK - Live Score - August 16, 2026 | FOX Sports",
+          "accepted": false,
+          "reason": "validation_dropped"
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/swedish-allsvenskan-djurgardens-if-ff-vs-aik-aug-16-2026-game-boxscore-649738?tab=boxscore",
+          "title": "Djurgardens IF FF vs. AIK - Live Score - August 16, 2026 | FOX Sports",
+          "accepted": true,
+          "reason": "Page matches the fixture date, teams, and league; shots on goal found for both sides"
+        }
+      ],
+      "source_url": "https://www.foxsports.com/soccer/swedish-allsvenskan-djurgardens-if-ff-vs-aik-aug-16-2026-game-boxscore-649738?tab=boxscore",
+      "reason": "Page matches the fixture date, teams, and league; shots on goal found for both sides"
+    },
+    {
+      "key": "2026-08-16|fredrikstad|kristiansund",
+      "league": "Eliteserien",
+      "date": "16/08/2026",
+      "home": "Fredrikstad",
+      "away": "Kristiansund",
+      "result": "1:0",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "фоли_господар": 7,
+        "фоли_гість": 15,
+        "кутові_господар": 2,
+        "кутові_гість": 10,
+        "жовті_картки_господар": 1,
+        "жовті_картки_гість": 3,
+        "удари_господар": 10,
+        "удари_гість": 18,
+        "удари_в_площину_господар": 4,
+        "удари_в_площину_гість": 3,
+        "фоли": 22,
+        "кутові": 12,
+        "жовті_картки": 4,
+        "удари": 28,
+        "удари_в_площину": 7
+      },
+      "query": "Fredrikstad vs Kristiansund 16/08/2026 Eliteserien football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.bbc.com/sport/football/live/cw20j803k1l1t",
+          "title": "Norwegian Eliteserien - Fredrikstad vs Kristiansund",
+          "accepted": true,
+          "reason": "Page is about Fredrikstad vs Kristiansund on 16 Aug 2026, Eliteserien, FT 1-0 confirmed"
+        }
+      ],
+      "source_url": "https://www.bbc.com/sport/football/live/cw20j803k1l1t",
+      "reason": "Page is about Fredrikstad vs Kristiansund on 16 Aug 2026, Eliteserien, FT 1-0 confirmed"
+    },
+    {
+      "key": "2026-08-16|sarpsborg 08|sandefjord",
+      "league": "Eliteserien",
+      "date": "16/08/2026",
+      "home": "Sarpsborg 08",
+      "away": "Sandefjord",
+      "result": "1:2",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "жовті_картки_господар": 1,
+        "жовті_картки_гість": 4,
+        "жовті_картки": 5,
+        "удари_господар": 20,
+        "удари_гість": 18,
+        "удари": 38,
+        "кутові_господар": 4,
+        "кутові_гість": 5,
+        "удари_в_площину_господар": 3,
+        "удари_в_площину_гість": 7,
+        "кутові": 9,
+        "удари_в_площину": 10,
+        "фоли_господар": 12,
+        "фоли_гість": 12,
+        "фоли": 24
+      },
+      "query": "Sarpsborg 08 vs Sandefjord 16/08/2026 Eliteserien football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://statz.ai/team/sandefjord",
+          "title": "Sandefjord Stats 2026 - Recent Form & Bet Builder Picks",
+          "accepted": false,
+          "reason": "Page shows only season averages and recent form summary for Sandefjord; no specific match stats (fouls, corners, cards, shots) for the 16 Aug 2026 Sarpsborg 08 vs Sandefjord fixture are provided."
+        },
+        {
+          "url": "https://www.bbc.com/sport/football/live/cm3w03wv7d32t",
+          "title": "Norwegian Eliteserien - Sarpsborg 08 vs Sandefjord",
+          "accepted": true,
+          "reason": "Page confirms Sarpsborg 08 1-2 Sandefjord on 16 Aug 2026, Eliteserien; yellow cards extractable from lineups"
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/sarpsborg-08-sandefjord-fotball/Bnsxq",
+          "title": "Sarpsborg 08 vs Sandefjord Fotball live score, H2H and ...",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/sarpsborg-08-sandefjord-fotball/Bnsxq"
+        },
+        {
+          "url": "https://www.flashscore.com/match/football/sandefjord-IXyr4UxA/sarpsborg-08-UPrP2SMS/",
+          "title": "Sarpsborg 08 v Sandefjord 16/08/2026 | Football",
+          "accepted": false,
+          "reason": "Page contains no match statistics for this fixture; no score, no stats data found in the page text."
+        },
+        {
+          "url": "https://www.fotmob.com/matches/sarpsborg-08-vs-sandefjord/2f8nde",
+          "title": "Sarpsborg 08 vs Sandefjord - live score, predicted lineups and H2H ...",
+          "accepted": true,
+          "reason": "Page confirms Sarpsborg 08 1-2 Sandefjord on 16 Aug 2026, Eliteserien. Total shots available; no fouls, corners, or shots on target data present."
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/norwegian-eliteserien-sarpsborg-08-vs-sandefjord-fotball-aug-16-2026-game-boxscore-648994",
+          "title": "Sarpsborg 08 vs. Sandefjord Fotball: Aug 16, 2026 - FOX Sports",
+          "accepted": true,
+          "reason": "Page confirms SAR 1-2 SAN on Aug 16 2026, stats extracted from play-by-play"
+        },
+        {
+          "url": "https://footystats.org/norway/sarpsborg-08-ff-vs-sandefjord-fotball-h2h-stats",
+          "title": "Sarpsborg 08 vs Sandefjord Stats, H2H, xG | FootyStats",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://footystats.org/norway/sarpsborg-08-ff-vs-sandefjord-fotball-h2h-stats"
+        },
+        {
+          "url": "https://www.sofascore.com/football/team/sarpsborg-08/822",
+          "title": "Sarpsborg 08 live score, schedule & player stats - Sofascore",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/team/sarpsborg-08/822"
+        },
+        {
+          "url": "https://www.sofascore.com/football/team/sarpsborg-08-ii/7483",
+          "title": "Sarpsborg 08 II live score, schedule & player stats - Sofascore",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/team/sarpsborg-08-ii/7483"
+        },
+        {
+          "url": "https://www.sofascore.com/football/team/sandefjord-fotball/676",
+          "title": "Sandefjord Fotball live score, schedule & player stats - Sofascore",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/team/sandefjord-fotball/676"
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/sandefjord-fotball-ii-sarpsborg-08-ii/IZcsFpIb",
+          "title": "Sandefjord Fotball II vs Sarpsborg 08 II live score, H2H and lineups",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/sandefjord-fotball-ii-sarpsborg-08-ii/IZcsFpIb"
+        },
+        {
+          "url": "https://www.sofascore.com/football/team/sarpsborg-08/70544",
+          "title": "Sarpsborg 08 live score, schedule & player stats - Sofascore",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/team/sarpsborg-08/70544"
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/norwegian-eliteserien-sarpsborg-08-vs-sandefjord-fotball-aug-16-2026-game-boxscore-648994?tab=boxscore",
+          "title": "fox boxscore",
+          "accepted": true,
+          "reason": "Page is about Sarpsborg 08 vs Sandefjord Fotball on August 16, 2026; fouls data present"
+        }
+      ],
+      "source_url": "https://www.foxsports.com/soccer/norwegian-eliteserien-sarpsborg-08-vs-sandefjord-fotball-aug-16-2026-game-boxscore-648994",
+      "reason": "Page confirms SAR 1-2 SAN on Aug 16 2026, stats extracted from play-by-play"
+    },
+    {
+      "key": "2026-08-16|molde|tromso",
+      "league": "Eliteserien",
+      "date": "16/08/2026",
+      "home": "Molde",
+      "away": "Tromso",
+      "result": "3:2",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "кутові_господар": 3,
+        "кутові_гість": 2,
+        "жовті_картки_господар": 4,
+        "жовті_картки_гість": 1,
+        "кутові": 5,
+        "жовті_картки": 5,
+        "фоли_господар": 16,
+        "фоли_гість": 11,
+        "удари_господар": 9,
+        "удари_гість": 7,
+        "удари_в_площину_господар": 5,
+        "удари_в_площину_гість": 3,
+        "фоли": 27,
+        "удари": 16,
+        "удари_в_площину": 8
+      },
+      "query": "Molde vs Tromso 16/08/2026 Eliteserien football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.foxsports.com/soccer/norwegian-eliteserien-molde-fk-vs-tromso-aug-16-2026-game-boxscore-648992?tab",
+          "title": "Molde FK vs. Tromso Box Score and Stats - August 16, 2026",
+          "accepted": true,
+          "reason": "Page confirms Molde 3-2 Tromso on Aug 16 2026, Eliteserien"
+        },
+        {
+          "url": "https://www.bbc.com/sport/football/live/cjzxerxlgy3pt",
+          "title": "Molde vs Tromsø: Norwegian Eliteserien stats & head-to- ...",
+          "accepted": false,
+          "reason": "validation_dropped"
+        },
+        {
+          "url": "https://www.espn.com/soccer/match/_/gameId/401843414/tromso-molde",
+          "title": "Molde vs. Tromso (Aug 16, 2026) Live Score",
+          "accepted": false,
+          "reason": "Page text is empty, no usable stats available"
+        },
+        {
+          "url": "https://footystats.org/norway/tromso-il-vs-molde-fk-h2h-stats",
+          "title": "Molde vs Tromsø Stats, H2H, xG",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://footystats.org/norway/tromso-il-vs-molde-fk-h2h-stats"
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/norwegian-eliteserien-molde-fk-vs-tromso-aug-16-2026-game-boxscore-648992?tab=boxscore",
+          "title": "Molde FK vs. Tromso Box Score and Stats - August 16, 2026 | FOX Sports",
+          "accepted": true,
+          "reason": "Page is about Molde FK vs Tromso on August 16, 2026 in Eliteserien; stats found for fouls, shots, shots on goal"
+        }
+      ],
+      "source_url": "https://www.foxsports.com/soccer/norwegian-eliteserien-molde-fk-vs-tromso-aug-16-2026-game-boxscore-648992?tab=boxscore",
+      "reason": "Page is about Molde FK vs Tromso on August 16, 2026 in Eliteserien; stats found for fouls, shots, shots on goal"
+    },
+    {
+      "key": "2026-08-16|brann|hamkam",
+      "league": "Eliteserien",
+      "date": "16/08/2026",
+      "home": "Brann",
+      "away": "HamKam",
+      "result": "3:0",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "фоли_господар": 10,
+        "фоли_гість": 12,
+        "кутові_господар": 10,
+        "кутові_гість": 1,
+        "жовті_картки_господар": 1,
+        "жовті_картки_гість": 1,
+        "удари_господар": 31,
+        "удари_гість": 4,
+        "удари_в_площину_господар": 13,
+        "удари_в_площину_гість": 0,
+        "фоли": 22,
+        "кутові": 11,
+        "жовті_картки": 2,
+        "удари": 35,
+        "удари_в_площину": 13
+      },
+      "query": "Brann vs HamKam 16/08/2026 Eliteserien football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.bbc.com/sport/football/live/cmkg49gqk5gwt",
+          "title": "Brann vs HamKam: Norwegian Eliteserien stats & head-to ... - BBC",
+          "accepted": true,
+          "reason": "Page confirms Brann 3-0 HamKam on 16 Aug 2026, Norwegian Eliteserien, with full match stats"
+        }
+      ],
+      "source_url": "https://www.bbc.com/sport/football/live/cmkg49gqk5gwt",
+      "reason": "Page confirms Brann 3-0 HamKam on 16 Aug 2026, Norwegian Eliteserien, with full match stats"
+    },
+    {
+      "key": "2026-08-16|aalesund|valerenga",
+      "league": "Eliteserien",
+      "date": "16/08/2026",
+      "home": "Aalesund",
+      "away": "Valerenga",
+      "result": "5:5",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "жовті_картки_гість": 1,
+        "фоли_господар": 11,
+        "фоли_гість": 10,
+        "кутові_господар": 10,
+        "кутові_гість": 5,
+        "жовті_картки_господар": 0,
+        "удари_господар": 24,
+        "удари_гість": 22,
+        "удари_в_площину_господар": 8,
+        "удари_в_площину_гість": 10,
+        "фоли": 21,
+        "кутові": 15,
+        "удари": 46,
+        "удари_в_площину": 18,
+        "жовті_картки": 1
+      },
+      "query": "Aalesund vs Valerenga 16/08/2026 Eliteserien football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.bbc.com/sport/football/live/cmx2lw2de62nt",
+          "title": "Aalesund vs Vålerenga: Norwegian Eliteserien stats & ...",
+          "accepted": true,
+          "reason": "Correct fixture: Aalesund vs Vålerenga, 16 Aug 2026, Eliteserien, FT 5-5. No fouls/corners/shots stats on page. One yellow card visible for away team (Tshiembe, substitute)."
+        },
+        {
+          "url": "https://playerstats.football/fixture/aalesund/valerenga/2026-08-16",
+          "title": "Aalesund 5–5 Vålerenga - PlayerStats",
+          "accepted": true,
+          "reason": "Page confirms Aalesund 5-5 Vålerenga on 16 Aug, Eliteserien, with full stats"
+        },
+        {
+          "url": "https://statz.ai/team/aalesund",
+          "title": "Aalesund Stats 2026 - Recent Form & Bet Builder Picks",
+          "accepted": false,
+          "reason": "validation_dropped"
+        },
+        {
+          "url": "https://www.flashscore.com/match/football/aalesund-nyrL8gfh/valerenga-ph9NNA8A/summary/stats/",
+          "title": "Aalesund v Valerenga 16/08/2026, Stats",
+          "accepted": false,
+          "reason": "Page contains no match statistics - no stats data loaded, only navigation and advertising content"
+        }
+      ],
+      "source_url": "https://playerstats.football/fixture/aalesund/valerenga/2026-08-16",
+      "reason": "Page confirms Aalesund 5-5 Vålerenga on 16 Aug, Eliteserien, with full stats"
+    },
+    {
+      "key": "2026-08-16|degerfors|goteborg",
+      "league": "Allsvenskan",
+      "date": "16/08/2026",
+      "home": "Degerfors",
+      "away": "Goteborg",
+      "result": "3:0",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "жовті_картки_господар": 2,
+        "жовті_картки_гість": 1,
+        "удари_господар": 10,
+        "удари_гість": 14,
+        "удари": 24,
+        "жовті_картки": 3,
+        "фоли_господар": 6,
+        "фоли_гість": 9,
+        "фоли": 15,
+        "кутові_господар": 2,
+        "кутові_гість": 14,
+        "кутові": 16,
+        "удари_в_площину_господар": 6,
+        "удари_в_площину_гість": 4,
+        "удари_в_площину": 10
+      },
+      "query": "Degerfors vs Goteborg 16/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.espn.com/soccer/match/_/gameId/401842787/ifk-goteborg-degerfors-if",
+          "title": "Degerfors vs. Göteborg (Aug 16, 2026) Live Score - ESPN",
+          "accepted": false,
+          "reason": "Page text is empty, no usable stats available"
+        },
+        {
+          "url": "https://www.bbc.com/sport/football/live/cqp9ev9g7gjgt",
+          "title": "Degerfors vs IFK Göteborg: Allsvenskan stats & head-to ... - BBC",
+          "accepted": true,
+          "reason": "Page confirms Degerfors 3-0 IFK Göteborg on 16 Aug 2026 in Allsvenskan. No stats (fouls, corners, shots) are present in the page text."
+        },
+        {
+          "url": "https://www.fotmob.com/matches/degerfors-vs-ifk-goteborg/28fs58",
+          "title": "Degerfors vs IFK Göteborg - live score, predicted lineups and H2H ...",
+          "accepted": true,
+          "reason": "Page confirms Degerfors 3-0 IFK Göteborg on 16 Aug 2026, Allsvenskan. Total shots available; fouls, corners, cards (home), shots on target not shown."
+        },
+        {
+          "url": "https://www.flashscoreusa.com/game/soccer/degerfors-zNSwBuue/ifk-goteborg-UovQtopk/summary/stats/",
+          "title": "Goteborg v Degerfors 02/08/2026, Stats - FlashscoreUSA.com",
+          "accepted": false,
+          "reason": "Page contains no match statistics for this fixture - no stats data loaded in the page text"
+        },
+        {
+          "url": "https://4score.ru/en/events/degerfors-gyoteborg-16-08-2026/",
+          "title": "Degerfors - IFK Göteborg August 16, 2026",
+          "accepted": false,
+          "error": "fetch: 404 Client Error: Not Found for url: https://4score.ru/en/events/degerfors-gyoteborg-16-08-2026/"
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/swedish-allsvenskan-ifk-goteborg-vs-degerfors-if-aug-02-2026-game-boxscore-649724?tab",
+          "title": "IFK Goteborg vs. Degerfors IF - Boxscore: Aug 2, 2026",
+          "accepted": false,
+          "reason": "Page shows Goteborg (home) vs Degerfors (away) on Aug 2 2026 with FT 2-0, but fixture requires Degerfors (home) vs Goteborg (away) on Aug 16 2026 with FT 3-0. Wrong date, wrong home/away orientation, and wrong score."
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/degerfors-if-ifk-goteborg/lKshL",
+          "title": "Degerfors IF vs IFK Göteborg live score, H2H and lineups",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/degerfors-if-ifk-goteborg/lKshL"
+        },
+        {
+          "url": "https://playerstats.football/fixture/degerfors/ifk-goteborg",
+          "title": "Degerfors vs IFK Göteborg Upcoming Fixture16th Aug 2026",
+          "accepted": false,
+          "reason": "Page shows upcoming fixture with no FT score; the match on 16/08/2026 has not been played yet according to the page (shows 13:00 kickoff time, no result)."
+        },
+        {
+          "url": "https://www.sofascore.com/football/team/degerfors-if/1807",
+          "title": "Degerfors IF live score, schedule & player stats",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/team/degerfors-if/1807"
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/degerfors-if-gais/LKshL",
+          "title": "Degerfors IF vs GAIS live score, H2H and lineups",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/degerfors-if-gais/LKshL"
+        },
+        {
+          "url": "https://www.sofascore.com/football/team/ifk-goteborg/1761",
+          "title": "IFK Göteborg live score, schedule & player stats",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/team/ifk-goteborg/1761"
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/ifk-goteborg-u19-degerfors-if-u19/oPLbsKPLb",
+          "title": "Degerfors IF U19 vs IFK Göteborg U19 live score, H2H and ...",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/ifk-goteborg-u19-degerfors-if-u19/oPLbsKPLb"
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/swedish-allsvenskan-degerfors-if-vs-ifk-goteborg-aug-16-2026-game-boxscore-649744",
+          "title": "Degerfors IF vs. IFK Goteborg - Live Score - August 16, 2026 | FOX Sports",
+          "accepted": false,
+          "reason": "validation_dropped"
+        },
+        {
+          "url": "https://sgodds.com/football/results-past-odds/Degerfors-vs-IFK-Gothenburg-141735",
+          "title": "Degerfors vs IFK Gothenburg - 16 Aug 2026 - Past Odds - sgodds",
+          "accepted": false,
+          "reason": "Page only contains odds data, no match statistics (fouls, corners, shots) available"
+        },
+        {
+          "url": "https://www.futbol24.com/match/2026/08/16/national/Sweden/Allsvenskan/2026/Degerfors/vs/IFK-Goteborg",
+          "title": "Degerfors IF vs IFK Göteborg 16/08/2026 Final Score - Futbol24",
+          "accepted": false,
+          "reason": "validation_dropped"
+        },
+        {
+          "url": "https://footystats.org/sweden/ifk-goteborg-vs-degerfors-if-h2h-stats",
+          "title": "Degerfors vs IFK Göteborg Stats, H2H, xG | FootyStats",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://footystats.org/sweden/ifk-goteborg-vs-degerfors-if-h2h-stats"
+        },
+        {
+          "url": "https://www.soccerway.com/match/degerfors-zNSwBuue/ifk-goteborg-UovQtopk/",
+          "title": "Degerfors v Goteborg Live Score, H2h & Match Info",
+          "accepted": false,
+          "reason": "Page contains no match data or statistics for this fixture - it appears to be a generic/future match page with no score or stats"
+        },
+        {
+          "url": "https://www.soccerway.com/match/degerfors-zNSwBuue/ifk-goteborg-UovQtopk/odds/",
+          "title": "Degerfors v Goteborg 16/08/2026, Odds",
+          "accepted": false,
+          "reason": "Page is an odds page, not a match statistics page. No match stats available."
+        },
+        {
+          "url": "https://us.soccerway.com/team/degerfors/zNSwBuue/",
+          "title": "Degerfors stats, results, fixtures & transfers",
+          "accepted": false,
+          "reason": "Page is a general Degerfors team profile page, not a specific match page for Degerfors vs Goteborg on 16/08/2026. No match stats for this fixture are present."
+        },
+        {
+          "url": "https://us.soccerway.com/team/ifk-goteborg/UovQtopk/",
+          "title": "Goteborg stats, results, fixtures & transfers",
+          "accepted": false,
+          "reason": "Page is a general Goteborg team stats/squad page, not a match report for this specific fixture on 16/08/2026."
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/swedish-allsvenskan-degerfors-if-vs-ifk-goteborg-aug-16-2026-game-boxscore-649744?tab=boxscore",
+          "title": "FOX boxscore tab",
+          "accepted": true,
+          "reason": "MATCH STATS DEG/GOT fouls 6-9 corners 2-14 shots on target 6-4"
+        }
+      ],
+      "source_url": "https://www.foxsports.com/soccer/swedish-allsvenskan-degerfors-if-vs-ifk-goteborg-aug-16-2026-game-boxscore-649744?tab=boxscore",
+      "reason": "Page confirms Degerfors 3-0 IFK Göteborg on 16 Aug 2026, Allsvenskan. Total shots available; fouls, corners, cards (home), shots on target not shown."
+    },
+    {
+      "key": "2026-08-16|brommapojkarna|orgryte",
+      "league": "Allsvenskan",
+      "date": "16/08/2026",
+      "home": "Brommapojkarna",
+      "away": "Orgryte",
+      "result": "3:1",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "жовті_картки_господар": 0,
+        "жовті_картки_гість": 3,
+        "жовті_картки": 3,
+        "удари_господар": 20,
+        "удари_гість": 11,
+        "удари": 31,
+        "фоли_господар": 10,
+        "фоли_гість": 8,
+        "кутові_господар": 8,
+        "кутові_гість": 7,
+        "удари_в_площину_господар": 1,
+        "удари_в_площину_гість": 0,
+        "фоли": 18,
+        "кутові": 15,
+        "удари_в_площину": 1
+      },
+      "query": "Brommapojkarna vs Orgryte 16/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.bbc.com/sport/football/live/ckpq8xqg131et",
+          "title": "Brommapojkarna vs Örgryte: Allsvenskan stats & head-to- ...",
+          "accepted": true,
+          "reason": "Correct fixture: Brommapojkarna 3-1 Örgryte, 16 Aug 2026, Allsvenskan. No fouls/corners/shots stats visible on page; cards extracted from events."
+        },
+        {
+          "url": "https://www.fotmob.com/matches/brommapojkarna-vs-orgryte/2txdf5",
+          "title": "Brommapojkarna vs Örgryte - live score, predicted lineups ...",
+          "accepted": true,
+          "reason": "Correct fixture, date, league, and FT score 3-1 confirmed"
+        },
+        {
+          "url": "https://betdiary.io/football/allsvenskan/if-brommapojkarna-orgryte-is/",
+          "title": "IF Brommapojkarna vs Örgryte IS | Allsvenskan | Football",
+          "accepted": false,
+          "reason": "Page is a betting odds/preview page, not a match statistics page. No fouls, corners, or shots on target stats are available."
+        },
+        {
+          "url": "https://www.espn.com/soccer/match/_/gameId/401842682/if-brommapojkarna-orgryte-is",
+          "title": "Örgryte 1-2 Brommapojkar (Apr 22, 2026) Final Score",
+          "accepted": false,
+          "reason": "Page text is empty, no usable stats"
+        },
+        {
+          "url": "https://scores24.live/en/soccer/m-16-08-2026-brommapojkarna-orgryte-is-prediction",
+          "title": "Brommapojkarna vs Orgryte Prediction 16/08/2026",
+          "accepted": true,
+          "reason": "Page shows Brommapojkarna vs Orgryte IS on 16.08.26 with score 3:1, matching known FT score. Stats extracted from match data row."
+        }
+      ],
+      "source_url": "https://scores24.live/en/soccer/m-16-08-2026-brommapojkarna-orgryte-is-prediction",
+      "reason": "Page shows Brommapojkarna vs Orgryte IS on 16.08.26 with score 3:1, matching known FT score. Stats extracted from match data row."
+    },
+    {
+      "key": "2026-08-16|kalmar|hammarby",
+      "league": "Allsvenskan",
+      "date": "16/08/2026",
+      "home": "Kalmar",
+      "away": "Hammarby",
+      "result": "0:4",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "фоли_господар": 11,
+        "фоли_гість": 10,
+        "жовті_картки_господар": 0,
+        "жовті_картки_гість": 1,
+        "удари_господар": 4,
+        "удари_гість": 26,
+        "удари_в_площину_господар": 2,
+        "удари_в_площину_гість": 14,
+        "фоли": 21,
+        "жовті_картки": 1,
+        "удари": 30,
+        "удари_в_площину": 16,
+        "кутові_господар": 4,
+        "кутові_гість": 9,
+        "кутові": 13
+      },
+      "query": "Kalmar vs Hammarby 16/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.flashscore.com/match/football/hammarby-SQsg3nME/kalmar-rkrUu5ae/summary/stats/",
+          "title": "Kalmar v Hammarby 16/08/2026, Stats",
+          "accepted": false,
+          "reason": "Page contains no match statistics - only navigation and advertising content loaded"
+        },
+        {
+          "url": "https://www.espn.com/soccer/match/_/gameId/401842792/hammarby-if-kalmar-ff",
+          "title": "Kalmar FF vs. Hammarby (Aug 16, 2026) Live Score",
+          "accepted": false,
+          "reason": "Page text is empty, no usable data"
+        },
+        {
+          "url": "https://www.bbc.com/sport/football/live/c3ewr7wejx01t",
+          "title": "Kalmar vs Hammarby: Allsvenskan stats & head-to-head",
+          "accepted": true,
+          "reason": "Page confirms Kalmar 0-4 Hammarby on 16 Aug 2026, Allsvenskan, with match stats visible"
+        },
+        {
+          "url": "https://www.fotmob.com/matches/hammarby-vs-kalmar-ff/2pyumy",
+          "title": "Kalmar FF vs Hammarby - live score, predicted lineups and ...",
+          "accepted": false,
+          "reason": "validation_dropped"
+        },
+        {
+          "url": "https://www.sofascore.com/football/match/kalmar-ff-hammarby-if/iKsQM",
+          "title": "Kalmar FF vs Hammarby IF live score, H2H and lineups - Sofascore",
+          "accepted": false,
+          "error": "fetch: 403 Client Error: Forbidden for url: https://www.sofascore.com/football/match/kalmar-ff-hammarby-if/iKsQM"
+        },
+        {
+          "url": "https://www.foxsports.com/soccer/swedish-allsvenskan-hammarby-if-vs-kalmar-ff-jul-12-2026-game-boxscore-649699?tab=boxscore",
+          "title": "Hammarby IF vs. Kalmar FF Box Score and Stats - July 12, 2026",
+          "accepted": false,
+          "reason": "Page shows a different fixture: Hammarby IF (home) vs Kalmar FF on July 12, 2026, not Kalmar (home) vs Hammarby on 16/08/2026"
+        },
+        {
+          "url": "https://valuestats.com/en/match/19635912-kalmar-vs-hammarby",
+          "title": "Estadísticas Kalmar vs Hammarby | Allsvenskan - ValueStats",
+          "accepted": true,
+          "reason": "Page confirms Kalmar vs Hammarby, Allsvenskan, 16/08/2026, score 0-4"
+        }
+      ],
+      "source_url": "https://valuestats.com/en/match/19635912-kalmar-vs-hammarby",
+      "reason": "Page confirms Kalmar vs Hammarby, Allsvenskan, 16/08/2026, score 0-4"
+    },
+    {
+      "key": "2026-08-16|gais|malmo ff",
+      "league": "Allsvenskan",
+      "date": "16/08/2026",
+      "home": "GAIS",
+      "away": "Malmo FF",
+      "result": "0:1",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "жовті_картки_господар": 2,
+        "жовті_картки_гість": 3,
+        "жовті_картки": 5,
+        "удари_господар": 14,
+        "удари_гість": 5,
+        "удари": 19,
+        "фоли_господар": 12,
+        "фоли_гість": 20,
+        "кутові_господар": 8,
+        "кутові_гість": 3,
+        "удари_в_площину_господар": 6,
+        "удари_в_площину_гість": 1,
+        "фоли": 32,
+        "кутові": 11,
+        "удари_в_площину": 7
+      },
+      "query": "GAIS vs Malmo FF 16/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.bbc.com/sport/football/live/ck79gj9p70xnt",
+          "title": "GAIS vs Malmö FF: Allsvenskan stats & head-to-head",
+          "accepted": true,
+          "reason": "Correct fixture, date, and score confirmed. Yellow cards visible; no fouls/corners/shots stats on page."
+        },
+        {
+          "url": "https://www.espn.com/soccer/match/_/gameId/401842790/malmo-ff-gais",
+          "title": "GAIS vs. Malmö (Aug 16, 2026) Live Score",
+          "accepted": false,
+          "reason": "Page text is empty, no usable stats available"
+        },
+        {
+          "url": "https://www.fotmob.com/matches/gais-vs-malmo-ff/2u9o8e",
+          "title": "GAIS vs Malmö FF - live score, predicted lineups and H2H ...",
+          "accepted": true,
+          "reason": "Page confirms GAIS vs Malmö FF, 16 Aug 2026, Allsvenskan, FT 0-1. Total shots shown: GAIS 14, Malmö FF 5. No fouls, corners, or shots on target breakdown available."
+        },
+        {
+          "url": "https://valuestats.com/en/match/19635918-gais-vs-malmo-ff",
+          "title": "Estadísticas GAIS vs Malmö FF | Allsvenskan",
+          "accepted": true,
+          "reason": "Page shows GAIS vs Malmö FF, Allsvenskan, 16/08/2026, FT 0-1, with full stats"
+        }
+      ],
+      "source_url": "https://valuestats.com/en/match/19635918-gais-vs-malmo-ff",
+      "reason": "Page shows GAIS vs Malmö FF, Allsvenskan, 16/08/2026, FT 0-1, with full stats"
+    },
+    {
+      "key": "2026-08-17|hacken|halmstad",
+      "league": "Allsvenskan",
+      "date": "17/08/2026",
+      "home": "Hacken",
+      "away": "Halmstad",
+      "result": "1:0",
+      "missing": [],
+      "status": "filled",
+      "filled": {
+        "фоли_господар": 11,
+        "фоли_гість": 10,
+        "кутові_господар": 11,
+        "кутові_гість": 1,
+        "жовті_картки_господар": 3,
+        "жовті_картки_гість": 1,
+        "удари_господар": 25,
+        "удари_гість": 11,
+        "удари_в_площину_господар": 7,
+        "удари_в_площину_гість": 3,
+        "фоли": 21,
+        "кутові": 12,
+        "жовті_картки": 4,
+        "удари": 36,
+        "удари_в_площину": 10
+      },
+      "query": "Hacken vs Halmstad 17/08/2026 Allsvenskan football match statistics corners fouls yellow cards shots",
+      "pages": [
+        {
+          "url": "https://www.bbc.com/sport/football/live/cmq89p45yjkxt",
+          "title": "Häcken vs Halmstad: Allsvenskan stats & head-to-head - BBC Sport",
+          "accepted": true,
+          "reason": "Page confirms Häcken 1-0 Halmstad on 17 Aug 2026, Allsvenskan, with full match stats"
+        }
+      ],
+      "source_url": "https://www.bbc.com/sport/football/live/cmq89p45yjkxt",
+      "reason": "Page confirms Häcken 1-0 Halmstad on 17 Aug 2026, Allsvenskan, with full match stats"
+    }
+  ],
+  "verification": {
+    "updated_at": "2026-08-18T17:53:24",
+    "rounds": 1,
+    "remaining_matches": 0,
+    "remaining_fields": 0,
+    "remaining": []
+  }
+}

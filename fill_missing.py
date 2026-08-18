@@ -1078,6 +1078,8 @@ def verify_and_fill(
     path = cache_path or STATS_JSON
     out = complete_row_totals(df)
     inventory: dict[str, Any] = load_missing_json(path)
+    out = apply_inventory(out, inventory)
+    out = complete_row_totals(out)
     last_fields: int | None = None
     used_rounds = 0
     for rnd in range(max(1, max_rounds)):

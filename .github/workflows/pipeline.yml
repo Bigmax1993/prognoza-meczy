@@ -21,6 +21,12 @@ jobs:
       SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: cache/missing_data.json
+          key: missing-data-${{ github.run_id }}
+          restore-keys: |
+            missing-data-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

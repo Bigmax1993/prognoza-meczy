@@ -31,7 +31,9 @@ Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax19
 
 Kolejność uzupełniania luk (obowiązkowa):
 
-Excel z dysku → skan komórek → `cache/missing_data.json` → dopiero potem Serper + HTML + Claude → walidacja → JSON → Excel.
+Excel z dysku → skan komórek → `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel.
+
+Na GitHub Actions ten JSON jest w repo + w cache workflow, żeby niedzielny run nie walił w Claude od zera.
 
 Przyszłe mecze **nie muszą** mieć faktu FT. Kalendarz idzie do osobnego arkusza.
 
