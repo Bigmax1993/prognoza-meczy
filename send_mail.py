@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Wysyłka predykcje_2026.xlsx przez Gmail SMTP (hasło do aplikacji)."""
+"""Wysyłka predykcje_2026.xlsx przez Gmail SMTP + kopia w Wysłanych (IMAP)."""
 from __future__ import annotations
 
 import argparse
+import imaplib
 import os
+import re
 import smtplib
+import time
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -12,6 +15,13 @@ ROOT = Path(__file__).resolve().parent
 OUT_XLSX = ROOT / "predykcje_2026.xlsx"
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
+IMAP_HOST = "imap.gmail.com"
+SENT_CANDIDATES = (
+    "[Gmail]/Sent Mail",
+    "[Gmail]/Wysłane",
+    "Sent",
+    "Wysłane",
+)
 
 
 def _env(name: str) -> str:
@@ -55,6 +65,64 @@ def mail_config() -> tuple[str, str, str]:
     return user, password, to
 
 
+def _mailbox_name(list_line: str) -> str | None:
+    names = re.findall(r'"([^"]+)"', list_line)
+    if names:
+        return names[-1]
+    parts = list_line.rsplit(" ", 1)
+    return parts[-1].strip() if parts else None
+
+
+def sent_folder_from_list(lines: list[bytes | str]) -> str | None:
+    for raw in lines:
+        line = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+        flags = line.split(")", 1)[0].upper()
+        if "\\SENT" in flags:
+            name = _mailbox_name(line)
+            if name:
+                return name
+    return None
+
+
+def _quote_mailbox(name: str) -> str:
+    if name.startswith('"') and name.endswith('"'):
+        return name
+    return f'"{name}"'
+
+
+def save_to_sent(
+    sender: str,
+    password: str,
+    msg: EmailMessage,
+    *,
+    imap_append=None,
+) -> str:
+    """Dopisz kopię do folderu Wysłane, żeby było widać u nadawcy."""
+    if imap_append is not None:
+        folder = imap_append(msg)
+        return str(folder or SENT_CANDIDATES[0])
+    with imaplib.IMAP4_SSL(IMAP_HOST, timeout=45) as imap:
+        imap.login(sender, password)
+        typ, boxes = imap.list()
+        folder = sent_folder_from_list(boxes or [])
+        if not folder:
+            for cand in SENT_CANDIDATES:
+                sel = imap.select(_quote_mailbox(cand), readonly=True)
+                if sel[0] == "OK":
+                    folder = cand
+                    break
+        if not folder:
+            raise RuntimeError("Nie znaleziono folderu Wysłane — włącz IMAP w Gmailu")
+        payload = msg.as_bytes()
+        imap.append(
+            _quote_mailbox(folder),
+            "\\Seen",
+            imaplib.Time2Internaldate(time.time()),
+            payload,
+        )
+    return folder
+
+
 def build_message(
     *,
     sender: str,
@@ -86,6 +154,7 @@ def send_excel(
     path: Path | None = None,
     *,
     smtp_send=None,
+    imap_append=None,
 ) -> dict[str, str]:
     _hydrate_user_env()
     sender, password, to = mail_config()
@@ -98,7 +167,13 @@ def send_excel(
             smtp.send_message(msg)
     else:
         smtp_send(msg, sender=sender, to=to)
-    return {"from": sender, "to": to, "file": str(xlsx.resolve())}
+    sent_folder = save_to_sent(sender, password, msg, imap_append=imap_append)
+    return {
+        "from": sender,
+        "to": to,
+        "file": str(xlsx.resolve()),
+        "sent_folder": sent_folder,
+    }
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -106,7 +181,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--plik", type=Path, default=OUT_XLSX, help="Ścieżka do xlsx")
     args = parser.parse_args(argv)
     info = send_excel(args.plik)
-    print(f"Wysłano {Path(info['file']).name} → {info['to']}")
+    print(
+        f"Wysłano {Path(info['file']).name} → {info['to']} "
+        f"(kopia: {info['from']} / {info['sent_folder']})"
+    )
 
 
 if __name__ == "__main__":

@@ -34,10 +34,24 @@ def test_send_excel_uses_env_and_smtp_hook(tmp_path: Path, monkeypatch):
         seen["sender"] = sender
         seen["to"] = to
 
-    info = sm.send_excel(xlsx, smtp_send=fake_smtp)
+    def fake_imap(msg: EmailMessage) -> str:
+        seen["imap"] = msg["To"]
+        return "[Gmail]/Wysłane"
+
+    info = sm.send_excel(xlsx, smtp_send=fake_smtp, imap_append=fake_imap)
     assert info["to"] == "Swinczakaleksy@gmail.com"
     assert seen["sender"] == "svinchak1993@gmail.com"
+    assert seen["imap"] == "Swinczakaleksy@gmail.com"
+    assert info["sent_folder"] == "[Gmail]/Wysłane"
     assert isinstance(seen["msg"], EmailMessage)
+
+
+def test_sent_folder_from_list_detects_gmail_sent():
+    lines = [
+        b'(\\HasNoChildren) "/" "INBOX"',
+        b'(\\HasNoChildren \\Sent) "/" "[Gmail]/Sent Mail"',
+    ]
+    assert sm.sent_folder_from_list(lines) == "[Gmail]/Sent Mail"
 
 
 def test_mail_config_requires_keys(monkeypatch):
