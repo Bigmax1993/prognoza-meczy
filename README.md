@@ -26,8 +26,8 @@ Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax19
 1. Bierze mecze lig Aleksa od **13.08.2026** (`aleks_ligi_stats.xlsx`) i dokleja nadchodzące z BBC.
 2. Uzupełnia braki (faule, rożne, kartki, strzały) **tylko z weryfikowalnych źródeł** — bez zmyślania liczb.
 3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5**.
-4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**).
-5. W poniedziałek wysyła ten plik na Gmail.
+4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). W arkuszu **Прогнози** nie ma kolumny `результат` — typowany wynik to `прогноз_рахунок`.
+5. W poniedziałek wysyła ten plik na Gmail (na Actions: artifact z niedzielnego pipeline).
 
 Kolejność uzupełniania luk (obowiązkowa):
 
@@ -47,7 +47,7 @@ Plik: **`predykcje_2026.xlsx`**
 |--------|-----------|
 | **Матчі_2026** | Rozegrane mecze: wynik, **Чи обидві забили?**, faule / rożne / kartki / strzały |
 | **Майбутні_матчі** | Kalendarz (ліга, дата, господар, гість) — bez wyniku |
-| **Прогнози** | Typy (1X2, BTTS, O/U, `прогноз_рахунок`). Bez kolumny `результат` — wynik FT jest w Матчі_2026 |
+| **Прогнози** | Typy: `ліга`, `дата`, `господар`, `гість`, `статус`, `причина`, `прогноз_переможець`, prawdopodobieństwa 1X2, `прогноз_рахунок`, BTTS, O/U. **Bez** kolumny `результат` — wynik FT jest tylko w Матчі_2026 |
 
 Linie O/U są stałe celowo: `лінія_кутові` = 9.5, `лінія_жовті` = 3.5. Różne per mecz są `очікувані_*` i `прогноз_*` (більше / менше).
 
@@ -110,7 +110,8 @@ Przy 401 Anthropic pipeline **się zatrzymuje** (bez spamu requestów).
 ## Gmail
 
 Wysyłka: SMTP `smtp.gmail.com` + załącznik `predykcje_2026.xlsx`.  
-Kopia ląduje w **Wysłanych** nadawcy (IMAP, folder Wysłane / Sent Mail).
+Kopia ląduje w **Wysłanych** nadawcy (IMAP, folder Wysłane / Sent Mail).  
+Na GitHub Actions załącznik to artifact z ostatniego udanego **Pipeline niedziela**, nie Excel z checkoutu gita.
 
 Włącz IMAP: Gmail → Ustawienia → Przekazywanie i POP/IMAP → **Włącz IMAP**.
 
