@@ -342,17 +342,6 @@ def test_ukrainize_renames_btts_column():
     assert list(out[pred.COL_BTTS_UA]) == ["так"]
 
 
-def test_fill_pred_result_with_tip_uses_predicted_score():
-    df = pd.DataFrame(
-        {
-            "результат": ["2:1", None, "—"],
-            "przewidywany_wynik": ["9:9", "1:0", "3:2"],
-        }
-    )
-    out = pred.fill_pred_result_with_tip(df)
-    assert list(out["результат"]) == ["2:1", "1:0", "3:2"]
-
-
 def test_split_played_and_future_moves_unplayed():
     as_of = pd.Timestamp("2026-08-18")
     df = pd.DataFrame(
@@ -414,6 +403,8 @@ def test_export_excel_creates_sheets(form_history, tmp_path):
     preds_xl = pd.read_excel(out, sheet_name="Прогнози")
     assert "статус" in preds_xl.columns
     assert "прогноз_переможець" in preds_xl.columns
+    assert "результат" not in preds_xl.columns
+    assert "результат" in mecze.columns
     assert set(preds_xl["статус"].astype(str)).issubset({"ок", "пропуск"})
 
 
@@ -451,7 +442,7 @@ def test_export_excel_future_sheet_calendar_only(form_history, tmp_path):
     assert list(future["гість"]) == ["Crystal Palace"]
     assert "результат" not in future.columns
     preds_xl = pd.read_excel(out, sheet_name="Прогнози")
+    assert "результат" not in preds_xl.columns
     eve = preds_xl[preds_xl["господар"].astype(str) == "Everton"].iloc[0]
-    assert str(eve["результат"]).strip() not in {"", "—", "nan"}
-    assert ":" in str(eve["результат"])
-    assert str(eve["результат"]) == str(eve["прогноз_рахунок"])
+    assert str(eve["прогноз_рахунок"]).strip() not in {"", "—", "nan"}
+    assert ":" in str(eve["прогноз_рахунок"])

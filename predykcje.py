@@ -212,22 +212,6 @@ def _excel_blank(v: object) -> bool:
     return str(v).strip() in {"", "nan", "None", "<NA>", "—"}
 
 
-def fill_pred_result_with_tip(predictions: pd.DataFrame) -> pd.DataFrame:
-    """W Прогнози: brak FT → wpisz typowany wynik (прогноз_рахунок)."""
-    if predictions is None or predictions.empty:
-        return predictions
-    out = predictions.copy()
-    tip_col = next(
-        (c for c in ("przewidywany_wynik", "прогноз_рахунок") if c in out.columns),
-        None,
-    )
-    if COL_RESULT not in out.columns or not tip_col:
-        return out
-    blank = out[COL_RESULT].map(_excel_blank)
-    out.loc[blank, COL_RESULT] = out.loc[blank, tip_col]
-    return out
-
-
 def split_played_and_future(
     df: pd.DataFrame,
     *,
@@ -1503,7 +1487,7 @@ def export_excel(
     df_raw[COL_DATA] = pd.to_datetime(df_raw[COL_DATA], dayfirst=True).dt.strftime("%d/%m/%Y")
     played, future = split_played_and_future(df_raw, as_of=as_of)
     future = future.reindex(columns=FUTURE_COLS)
-    preds_out = fill_pred_result_with_tip(predictions.copy())
+    preds_out = predictions.drop(columns=[COL_RESULT], errors="ignore")
     preds_ua = ukrainize_for_excel(preds_out, fill_blank="—")
 
     _write_df_sheet(wb, SHEET_MECZE, played, table_names=table_names)

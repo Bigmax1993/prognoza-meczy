@@ -47,7 +47,7 @@ Plik: **`predykcje_2026.xlsx`**
 |--------|-----------|
 | **Матчі_2026** | Rozegrane mecze: wynik, **Чи обидві забили?**, faule / rożne / kartki / strzały |
 | **Майбутні_матчі** | Kalendarz (ліга, дата, господар, гість) — bez wyniku |
-| **Прогнози** | Typy. Przy braku FT kolumna `результат` = typowany wynik (`прогноз_рахунок`) |
+| **Прогнози** | Typy (1X2, BTTS, O/U, `прогноз_рахунок`). Bez kolumny `результат` — wynik FT jest w Матчі_2026 |
 
 Linie O/U są stałe celowo: `лінія_кутові` = 9.5, `лінія_жовті` = 3.5. Różne per mecz są `очікувані_*` i `прогноз_*` (більше / менше).
 
@@ -124,11 +124,14 @@ Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (
 
 | Workflow | Kiedy | Co |
 |----------|--------|-----|
-| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` |
-| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **02:00** | pobiera artifact z ostatniego udanego pipeline i wysyła mail |
+| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` (Excel, 7 dni) |
+| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **02:00** | ściąga artifact z ostatniego udanego pipeline i wysyła mail |
+| [Testy](.github/workflows/test.yml) | push na `main` (też ręcznie) | `pytest tests` |
 
 Ręcznie: **Actions** → wybrany workflow → **Run workflow**.  
 Najpierw odpal pipeline, potem wysyłkę — mail bez niedzielnego artifactu się wywali.
+
+W checkoutcie jest już `predykcje_2026.xlsx`. `gh run download` **nie nadpisuje** plików (`file exists`), więc wysyłka ściąga artifact do pustego `artifacts/`, a potem kopiuje go na `predykcje_2026.xlsx`. Mail idzie z Excela z niedzielnego pipeline, nie z gita.
 
 ---
 
@@ -169,7 +172,8 @@ Ligi: Premier League, La Liga, Serie A, Bundesliga, Bundesliga 2, Eredivisie, Su
 python -m pytest tests -q
 ```
 
-Kluczowe: `tests/test_predykcje.py`, `tests/test_fill_missing.py`, `tests/test_send_mail.py`.
+Kluczowe: `tests/test_predykcje.py`, `tests/test_fill_missing.py`, `tests/test_send_mail.py`.  
+Na GitHubie to samo robi workflow [Testy](.github/workflows/test.yml) przy pushu na `main`.
 
 ---
 
