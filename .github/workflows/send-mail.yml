@@ -32,7 +32,10 @@ jobs:
             exit 1
           fi
           echo "pipeline run_id=$RUN_ID"
-          gh run download "$RUN_ID" --name predykcje-xlsx --dir .
+          rm -f predykcje_2026.xlsx
+          mkdir -p artifacts
+          gh run download "$RUN_ID" --name predykcje-xlsx --dir artifacts
+          cp artifacts/predykcje_2026.xlsx predykcje_2026.xlsx
           test -f predykcje_2026.xlsx
       - uses: actions/setup-python@v5
         with:
