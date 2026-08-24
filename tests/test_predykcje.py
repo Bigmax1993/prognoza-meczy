@@ -493,3 +493,8 @@ def test_fill_played_requires_keys_when_complete(monkeypatch):
         pred._fill_played_from_json_and_api(
             df, df, df, from_date=pred.FROM_DATE, require_complete=True
         )
+
+
+def test_no_fill_missing_flag_removed():
+    with pytest.raises(SystemExit):
+        pred.main(["--no-fill-missing"])

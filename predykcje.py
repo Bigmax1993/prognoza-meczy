@@ -12,7 +12,6 @@ Heurystyka:
 Uruchomienie:
   python predykcje.py
   python predykcje.py --od 13/08/2026
-  python predykcje.py --fill-missing
 """
 from __future__ import annotations
 
@@ -1614,12 +1613,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--fill-missing",
         action="store_true",
-        help="Wymagaj kluczy API i kompletnych statystyk (JSON → Serper → Claude → weryfikacja Excela)",
-    )
-    parser.add_argument(
-        "--no-fill-missing",
-        action="store_true",
-        help="Pomin JSON/Serper/Claude (tylko debug — nie do maila)",
+        help="Zawsze wlaczone: JSON + Serper/Claude + weryfikacja Excela (flaga zostaje dla CI)",
     )
     parser.add_argument(
         "--send-mail",
@@ -1673,16 +1667,13 @@ def main(argv: list[str] | None = None) -> None:
             f"Brak meczow od {args.od.strftime('%d/%m/%Y')} — nie mozna wygenerowac predykcji."
         )
 
-    if args.no_fill_missing:
-        _safe_print("Braki: pominiete (--no-fill-missing)")
-    else:
-        df_2026, df_history, df_year = _fill_played_from_json_and_api(
-            df_2026,
-            df_history,
-            df_year,
-            from_date=args.od,
-            require_complete=args.fill_missing,
-        )
+    df_2026, df_history, df_year = _fill_played_from_json_and_api(
+        df_2026,
+        df_history,
+        df_year,
+        from_date=args.od,
+        require_complete=True,
+    )
 
     team_avg = compute_team_averages(df_history)
     league_avg = compute_league_averages(df_2026)
@@ -1706,27 +1697,26 @@ def main(argv: list[str] | None = None) -> None:
         from_date=args.od,
     )
 
-    if not args.no_fill_missing:
-        mecze_x, preds_x, changed = _verify_exported_stats(
-            path,
+    mecze_x, preds_x, changed = _verify_exported_stats(
+        path,
+        from_date=args.od,
+        require_complete=True,
+    )
+    if changed and mecze_x is not None:
+        df_2026 = mecze_x
+        if preds_x is not None:
+            predictions = preds_x
+        path = export_excel(
+            df_2026,
+            predictions,
+            team_avg,
+            league_avg,
+            backtest_detail=bt_detail,
+            backtest_summary=bt_summary,
             from_date=args.od,
-            require_complete=args.fill_missing,
+            path=path,
         )
-        if changed and mecze_x is not None:
-            df_2026 = mecze_x
-            if preds_x is not None:
-                predictions = preds_x
-            path = export_excel(
-                df_2026,
-                predictions,
-                team_avg,
-                league_avg,
-                backtest_detail=bt_detail,
-                backtest_summary=bt_summary,
-                from_date=args.od,
-                path=path,
-            )
-            _safe_print(f"Excel po weryfikacji: {path}")
+        _safe_print(f"Excel po weryfikacji: {path}")
 
     _safe_print(f"Predykcje: {len(predictions)} meczow")
     if "status" in predictions.columns:

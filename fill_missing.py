@@ -184,7 +184,6 @@ def _hydrate_user_env() -> None:
         "ANTHROPIC_API_KEY",
         "CLAUDE_API_KEY",
         "ANTHROPIC_AUTH_TOKEN",
-        "FILL_MISSING",
     )
     try:
         import winreg
@@ -228,8 +227,6 @@ def has_keys() -> bool:
 
 
 def fill_enabled() -> bool:
-    if _env("FILL_MISSING").lower() in {"0", "false", "no"}:
-        return False
     return has_keys()
 
 
