@@ -1477,6 +1477,7 @@ def export_excel(
 ) -> Path:
     out_path = path or OUT_XLSX
     if from_date is not None:
+        validate_from_date(df_2026, from_date, label="Mecze")
         validate_from_date(predictions, from_date, label="Predykcje")
     wb = Workbook()
     wb.remove(wb.active)
@@ -1510,7 +1511,7 @@ def main(argv: list[str] | None = None) -> None:
         "--od",
         default=FROM_DATE.strftime("%d/%m/%Y"),
         type=parse_od_date,
-        help="Poczatek okna predykcji (dd/mm/yyyy). Arkusz Матчі_2026 ma wszystkie rozegrane 2026.",
+        help="Poczatek zakresu meczow w Excelu (dd/mm/yyyy), domyslnie 13/08/2026",
     )
     parser.add_argument(
         "--no-upcoming",
@@ -1569,9 +1570,8 @@ def main(argv: list[str] | None = None) -> None:
     if COL_RESULT in df_history.columns:
         with_score = int(df_history[COL_RESULT].astype(str).str.match(r"^\d+:\d+$").sum())
     _safe_print(
-        f"Arkusz Mecze 2026: {len(df_year)} (zrodlo {n_year}) | "
-        f"okno predykcji od {args.od.strftime('%d/%m/%Y')}: {len(df_2026)} | "
-        f"historii: {len(df_history)} | z wynikiem: {with_score}"
+        f"Mecze od {args.od.strftime('%d/%m/%Y')}: {len(df_2026)} "
+        f"(z {n_year} w 2026) | historii: {len(df_history)} | z wynikiem: {with_score}"
     )
     if df_2026.empty:
         raise SystemExit(
@@ -1633,7 +1633,7 @@ def main(argv: list[str] | None = None) -> None:
             _safe_print(f"  {r['metryka']}: {r['wartosc']}")
 
     path = export_excel(
-        df_year,
+        df_2026,
         predictions,
         team_avg,
         league_avg,

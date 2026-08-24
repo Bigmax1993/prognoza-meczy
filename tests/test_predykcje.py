@@ -448,33 +448,37 @@ def test_export_excel_future_sheet_calendar_only(form_history, tmp_path):
     assert ":" in str(eve["прогноз_рахунок"])
 
 
-def test_export_excel_played_sheet_keeps_full_year(form_history, tmp_path):
+def test_export_excel_played_sheet_from_cutoff_keeps_recent_ft(form_history, tmp_path):
     df_2026, df_hist = pred.load_2026_data(form_history)
-    early = pd.DataFrame(
+    extra = pd.DataFrame(
         {
-            "ліга": ["Premier League"],
-            "дата": [pd.Timestamp("2026-01-10")],
-            "господар": ["Liverpool"],
-            "гість": ["Everton"],
-            "результат": ["2:0"],
+            "ліга": ["Premier League", "Premier League"],
+            "дата": [pd.Timestamp("2026-01-10"), pd.Timestamp("2026-08-22")],
+            "господар": ["Liverpool", "Everton"],
+            "гість": ["Chelsea", "Leeds"],
+            "результат": ["2:0", "1:0"],
         }
     )
-    early = pred._to_numeric(early)
-    early = pred._attach_goals(early)
-    df_all = pd.concat([early, df_2026], ignore_index=True)
+    extra = pred._to_numeric(extra)
+    extra = pred._attach_goals(extra)
+    df_all = pd.concat([df_2026, extra], ignore_index=True)
+    window = pred.filter_from_date(df_all, pred.FROM_DATE)
     team_avg = pred.compute_team_averages(df_hist)
-    league_avg = pred.compute_league_averages(df_all)
-    preds = pred.build_predictions(df_2026, df_hist)
+    league_avg = pred.compute_league_averages(window)
+    preds = pred.build_predictions(window, df_hist)
     out = tmp_path / "predykcje_2026.xlsx"
     pred.export_excel(
-        df_all,
+        window,
         preds,
         team_avg,
         league_avg,
         out,
-        as_of=pd.Timestamp("2026-08-18"),
+        from_date=pred.FROM_DATE,
+        as_of=pd.Timestamp("2026-08-24"),
     )
     mecze = pd.read_excel(out, sheet_name="Матчі_2026")
-    assert "Liverpool" in set(mecze["господар"].astype(str))
+    homes = set(mecze["господар"].astype(str))
+    assert "Liverpool" not in homes
+    assert "Everton" in homes
     dates = pd.to_datetime(mecze["дата"], dayfirst=True)
-    assert dates.min() < pred.FROM_DATE
+    assert dates.min() >= pred.FROM_DATE

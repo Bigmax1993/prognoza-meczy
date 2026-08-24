@@ -23,12 +23,11 @@ Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax19
 
 ## Co robi
 
-1. Bierze **wszystkie rozegrane mecze 2026** z `aleks_ligi_stats.xlsx`, dociąga wyniki FT z BBC za lukę od ostatniego meczu w źródle i dokleja nadchodzące (domyślnie 7 dni).
-2. Predykcje liczy od **13.08.2026** (`--od`) — to tylko okno typów, nie filtr arkusza meczów.
-3. Uzupełnia braki (faule, rożne, kartki, strzały) **tylko z weryfikowalnych źródeł** — bez zmyślania liczb.
-4. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5**.
-5. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). W arkuszu **Прогнози** nie ma kolumny `результат` — typowany wynik to `прогноз_рахунок`.
-6. W poniedziałek wysyła ten plik na Gmail (na Actions: artifact z niedzielnego pipeline).
+1. Bierze mecze lig Aleksa **od 13.08.2026** (`--od`), dociąga wyniki FT z BBC za lukę po ostatnim meczu w źródle i dokleja nadchodzące (domyślnie 7 dni).
+2. Uzupełnia braki (faule, rożne, kartki, strzały) **tylko z weryfikowalnych źródeł** — bez zmyślania liczb.
+3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5**.
+4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). W arkuszu **Прогнози** nie ma kolumny `результат` — typowany wynik to `прогноз_рахунок`.
+5. W poniedziałek wysyła ten plik na Gmail (na Actions: artifact z niedzielnego pipeline).
 
 Kolejność uzupełniania luk (obowiązkowa):
 
@@ -46,7 +45,7 @@ Plik: **`predykcje_2026.xlsx`**
 
 | Arkusz | Zawartość |
 |--------|-----------|
-| **Матчі_2026** | **Wszystkie** rozegrane mecze 2026: wynik, **Чи обидві забили?**, faule / rożne / kartki / strzały |
+| **Матчі_2026** | Rozegrane mecze **od 13.08.2026** (wynik, **Чи обидві забили?**, faule / rożne / kartki / strzały) |
 | **Майбутні_матчі** | Kalendarz (ліга, дата, господар, гість) — bez wyniku |
 | **Прогнози** | Typy: `ліга`, `дата`, `господар`, `гість`, `статус`, `причина`, `прогноз_переможець`, prawdopodobieństwa 1X2, `прогноз_рахунок`, BTTS, O/U. **Bez** kolumny `результат` — wynik FT jest tylko w Матчі_2026 |
 
