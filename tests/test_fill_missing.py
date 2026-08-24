@@ -571,3 +571,64 @@ def test_verify_excel_uses_api_when_json_lacks_value(tmp_path):
     assert int(out.iloc[0]["фоли"]) == 24
     assert report["filled_from_json"] == 0
     assert report["filled_from_api"] >= 1
+
+
+def test_merge_inventories_keeps_previous_filled_when_excel_complete():
+    scanned = [
+        {
+            "key": "2026-08-22|everton|leeds",
+            "missing": ["фоли_господар"],
+            "filled": {},
+            "status": "pending",
+            "pages": [],
+            "source_url": None,
+            "reason": None,
+        }
+    ]
+    previous = {
+        "gaps": [
+            {
+                "key": "2026-08-14|elfsborg|vasteras sk",
+                "status": "filled",
+                "filled": {"фоли_господар": 13, "фоли_гість": 17},
+                "missing": [],
+            }
+        ]
+    }
+    merged = fm._merge_inventories(scanned, previous)
+    keys = {g["key"] for g in merged}
+    assert "2026-08-22|everton|leeds" in keys
+    assert "2026-08-14|elfsborg|vasteras sk" in keys
+    old = next(g for g in merged if g["key"].startswith("2026-08-14"))
+    assert old["filled"]["фоли_господар"] == 13
+
+
+def test_merge_inventories_reuses_json_fill_on_new_scan():
+    scanned = [
+        {
+            "key": "2026-08-14|elfsborg|vasteras sk",
+            "missing": ["фоли_господар", "фоли_гість"],
+            "filled": {},
+            "status": "pending",
+            "pages": [],
+            "source_url": None,
+            "reason": None,
+        }
+    ]
+    previous = {
+        "gaps": [
+            {
+                "key": "2026-08-14|elfsborg|vasteras sk",
+                "status": "filled",
+                "filled": {"фоли_господар": 13, "фоли_гість": 17},
+                "missing": [],
+                "pages": [{"url": "https://example.com"}],
+            }
+        ]
+    }
+    merged = fm._merge_inventories(scanned, previous)
+    assert len(merged) == 1
+    assert merged[0]["status"] == "filled"
+    assert merged[0]["missing"] == []
+    assert merged[0]["filled"]["фоли_господар"] == 13
+    assert merged[0]["pages"][0]["url"] == "https://example.com"

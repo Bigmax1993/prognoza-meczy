@@ -482,3 +482,14 @@ def test_export_excel_played_sheet_from_cutoff_keeps_recent_ft(form_history, tmp
     assert "Everton" in homes
     dates = pd.to_datetime(mecze["дата"], dayfirst=True)
     assert dates.min() >= pred.FROM_DATE
+
+
+def test_fill_played_requires_keys_when_complete(monkeypatch):
+    import fill_missing as fill
+
+    monkeypatch.setattr(fill, "has_keys", lambda: False)
+    df = pd.DataFrame()
+    with pytest.raises(SystemExit, match="SERPER_API_KEY"):
+        pred._fill_played_from_json_and_api(
+            df, df, df, from_date=pred.FROM_DATE, require_complete=True
+        )

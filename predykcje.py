@@ -1505,6 +1505,97 @@ def export_excel(
     return out_path
 
 
+def _fill_played_from_json_and_api(
+    df_2026: pd.DataFrame,
+    df_history: pd.DataFrame,
+    df_year: pd.DataFrame,
+    *,
+    from_date: pd.Timestamp,
+    require_complete: bool,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Zawsze: skan braków → JSON → API (gdy są klucze). `--fill-missing` nie pozwala na puste pola."""
+    import fill_missing as fill
+    import upcoming as up
+
+    if require_complete and not fill.has_keys():
+        raise SystemExit(
+            "Brak SERPER_API_KEY / ANTHROPIC_API_KEY — --fill-missing wymaga kluczy."
+        )
+    live = fill.has_keys()
+    if not live:
+        _safe_print("Braki: zapisuje JSON bez API (brak SERPER_API_KEY / ANTHROPIC_API_KEY)")
+    try:
+        df_2026, inv = fill.verify_and_fill(
+            df_2026, live=live, max_rounds=3, from_date=from_date
+        )
+    except fill.ClaudeAuthError as exc:
+        logger.warning("%s", exc)
+        _safe_print(str(exc))
+        inv = fill.load_missing_json(fill.STATS_JSON)
+        df_2026 = fill.apply_inventory(df_2026, inv)
+        df_2026 = fill.complete_row_totals(df_2026)
+        raise SystemExit(str(exc)) from exc
+    s = (inv or {}).get("summary") or {}
+    v = (inv or {}).get("verification") or {}
+    _safe_print(
+        f"Braki (JSON {fill.STATS_JSON.name}): "
+        f"luk={s.get('gaps', 0)} pending={s.get('pending', 0)} "
+        f"wypelnione={s.get('filled', 0)}"
+    )
+    if v:
+        _safe_print(
+            f"Weryfikacja: rundy={v.get('rounds', 0)} "
+            f"zostalo_meczow={v.get('remaining_matches', 0)} "
+            f"zostalo_pol={v.get('remaining_fields', 0)}"
+        )
+    if inv:
+        df_history = fill.apply_inventory(df_history, inv)
+        df_history = fill.complete_row_totals(df_history)
+    df_year = up.upsert_matches(df_year, df_2026)
+    return df_2026, df_history, df_year
+
+
+def _verify_exported_stats(
+    path: Path,
+    *,
+    from_date: pd.Timestamp,
+    require_complete: bool,
+) -> tuple[pd.DataFrame | None, pd.DataFrame | None, bool]:
+    """Po zapisie Excela: puste komórki → JSON ponownie → API na resztę."""
+    import fill_missing as fill
+
+    live = fill.has_keys()
+    try:
+        mecze_x, preds_x, vrep = fill.verify_exported_workbook(
+            path,
+            live=live,
+            from_date=from_date,
+        )
+    except fill.ClaudeAuthError as exc:
+        logger.warning("%s", exc)
+        _safe_print(str(exc))
+        raise SystemExit(str(exc)) from exc
+    _safe_print(
+        f"Weryfikacja Excela: puste {vrep['empty_before']['fields']} pol → "
+        f"z JSON {vrep['filled_from_json']}, z API {vrep['filled_from_api']}, "
+        f"zostalo {vrep['empty_after']['fields']}"
+    )
+    if vrep.get("remaining"):
+        _safe_print("Nadal puste (brak w JSON i na stronach):")
+        for g in vrep["remaining"]:
+            _safe_print(
+                f"  {g['date']} {g['home']} - {g['away']}: "
+                f"{len(g['missing'] or [])} pol"
+            )
+    leftover = int((vrep.get("empty_after") or {}).get("fields") or 0)
+    if require_complete and leftover > 0:
+        raise SystemExit(
+            f"Po weryfikacji zostalo {leftover} pustych pol statystyk — Excel nie jest kompletny."
+        )
+    changed = (vrep["filled_from_json"] + vrep["filled_from_api"]) > 0
+    return mecze_x, preds_x, changed
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Predykcje 2026")
     parser.add_argument(
@@ -1523,9 +1614,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--fill-missing",
         action="store_true",
-        help="Serper+BS4+Claude: uzupelnij braki statystyk (JSON → walidacja → Excel)",
+        help="Wymagaj kluczy API i kompletnych statystyk (JSON → Serper → Claude → weryfikacja Excela)",
     )
-    parser.add_argument("--no-fill-missing", action="store_true", help="Wylacz uzupelnianie luk")
+    parser.add_argument(
+        "--no-fill-missing",
+        action="store_true",
+        help="Pomin JSON/Serper/Claude (tylko debug — nie do maila)",
+    )
     parser.add_argument(
         "--send-mail",
         action="store_true",
@@ -1578,47 +1673,16 @@ def main(argv: list[str] | None = None) -> None:
             f"Brak meczow od {args.od.strftime('%d/%m/%Y')} — nie mozna wygenerowac predykcji."
         )
 
-    if not args.no_fill_missing:
-        try:
-            import fill_missing as fill
-
-            want_fill = args.fill_missing or fill.fill_enabled()
-            if want_fill:
-                live = fill.has_keys()
-                if not live:
-                    _safe_print(
-                        "Braki: zapisuje JSON bez API (brak SERPER_API_KEY / ANTHROPIC_API_KEY)"
-                    )
-                try:
-                    df_2026, inv = fill.verify_and_fill(df_2026, live=live, max_rounds=3)
-                except fill.ClaudeAuthError as exc:
-                    logger.warning("%s", exc)
-                    _safe_print(str(exc))
-                    inv = fill.load_missing_json(fill.STATS_JSON)
-                    df_2026 = fill.apply_inventory(df_2026, inv)
-                    df_2026 = fill.complete_row_totals(df_2026)
-                s = (inv or {}).get("summary") or {}
-                v = (inv or {}).get("verification") or {}
-                _safe_print(
-                    f"Braki (JSON {fill.STATS_JSON.name}): "
-                    f"luk={s.get('gaps', 0)} pending={s.get('pending', 0)} "
-                    f"wypelnione={s.get('filled', 0)}"
-                )
-                if v:
-                    _safe_print(
-                        f"Weryfikacja: rundy={v.get('rounds', 0)} "
-                        f"zostalo_meczow={v.get('remaining_matches', 0)} "
-                        f"zostalo_pol={v.get('remaining_fields', 0)}"
-                    )
-                if inv:
-                    df_history = fill.apply_inventory(df_history, inv)
-                    df_history = fill.complete_row_totals(df_history)
-                import upcoming as up
-
-                df_year = up.upsert_matches(df_year, df_2026)
-        except Exception as exc:
-            logger.warning("Uzupelnienie luk pominiete: %s", exc)
-            _safe_print(f"Uzupelnienie luk pominiete: {exc}")
+    if args.no_fill_missing:
+        _safe_print("Braki: pominiete (--no-fill-missing)")
+    else:
+        df_2026, df_history, df_year = _fill_played_from_json_and_api(
+            df_2026,
+            df_history,
+            df_year,
+            from_date=args.od,
+            require_complete=args.fill_missing,
+        )
 
     team_avg = compute_team_averages(df_history)
     league_avg = compute_league_averages(df_2026)
@@ -1643,48 +1707,26 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     if not args.no_fill_missing:
-        try:
-            import fill_missing as fill
-
-            want_fill = args.fill_missing or fill.fill_enabled()
-            if want_fill:
-                mecze_x, preds_x, vrep = fill.verify_exported_workbook(
-                    path,
-                    live=fill.has_keys(),
-                    from_date=args.od,
-                )
-                _safe_print(
-                    f"Weryfikacja Excela: puste {vrep['empty_before']['fields']} pol → "
-                    f"z JSON {vrep['filled_from_json']}, z API {vrep['filled_from_api']}, "
-                    f"zostalo {vrep['empty_after']['fields']}"
-                )
-                changed = (vrep["filled_from_json"] + vrep["filled_from_api"]) > 0
-                if changed:
-                    df_2026 = mecze_x
-                    predictions = preds_x
-                    path = export_excel(
-                        df_2026,
-                        predictions,
-                        team_avg,
-                        league_avg,
-                        backtest_detail=bt_detail,
-                        backtest_summary=bt_summary,
-                        from_date=args.od,
-                        path=path,
-                    )
-                    _safe_print(f"Excel po weryfikacji: {path}")
-                if vrep.get("remaining"):
-                    _safe_print("Nadal puste (brak w JSON i na stronach):")
-                    for g in vrep["remaining"]:
-                        _safe_print(
-                            f"  {g['date']} {g['home']} - {g['away']}: "
-                            f"{len(g['missing'] or [])} pol"
-                        )
-        except fill.ClaudeAuthError as exc:
-            _safe_print(str(exc))
-        except Exception as exc:
-            logger.warning("Weryfikacja Excela pominieta: %s", exc)
-            _safe_print(f"Weryfikacja Excela pominieta: {exc}")
+        mecze_x, preds_x, changed = _verify_exported_stats(
+            path,
+            from_date=args.od,
+            require_complete=args.fill_missing,
+        )
+        if changed and mecze_x is not None:
+            df_2026 = mecze_x
+            if preds_x is not None:
+                predictions = preds_x
+            path = export_excel(
+                df_2026,
+                predictions,
+                team_avg,
+                league_avg,
+                backtest_detail=bt_detail,
+                backtest_summary=bt_summary,
+                from_date=args.od,
+                path=path,
+            )
+            _safe_print(f"Excel po weryfikacji: {path}")
 
     _safe_print(f"Predykcje: {len(predictions)} meczow")
     if "status" in predictions.columns:

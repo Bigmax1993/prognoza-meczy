@@ -177,13 +177,40 @@ def _load_dotenv() -> None:
             os.environ[key] = val
 
 
+def _hydrate_user_env() -> None:
+    """Windows: dopisz klucze API z User env, jeśli nie ma ich w procesie."""
+    names = (
+        "SERPER_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "CLAUDE_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "FILL_MISSING",
+    )
+    try:
+        import winreg
+    except ImportError:
+        return
+    for name in names:
+        if (os.environ.get(name) or "").strip():
+            continue
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment") as key:
+                val, _ = winreg.QueryValueEx(key, name)
+        except OSError:
+            continue
+        if val:
+            os.environ[name] = str(val).strip()
+
+
 def _env(name: str) -> str:
+    _hydrate_user_env()
     _load_dotenv()
     return (os.environ.get(name) or "").strip()
 
 
 def _anthropic_key() -> str:
     """Klucz z PowerShella / User env, potem .env. Alias: CLAUDE_API_KEY."""
+    _hydrate_user_env()
     for name in ("ANTHROPIC_API_KEY", "CLAUDE_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
         val = (os.environ.get(name) or "").strip().strip('"').strip("'")
         if val:
@@ -724,10 +751,14 @@ def _merge_inventories(
     scanned: list[dict[str, Any]],
     previous: dict[str, Any] | None,
 ) -> list[dict[str, Any]]:
+    """Scala nowy skan z JSON: nowe braki + stare wypełnienia (nawet gdy Excel jest kompletny)."""
     old_by_key = {g.get("key"): g for g in (previous or {}).get("gaps") or [] if g.get("key")}
     merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
     for gap in scanned:
-        prev = old_by_key.get(gap["key"])
+        key = gap["key"]
+        seen.add(key)
+        prev = old_by_key.get(key)
         if not prev:
             merged.append(gap)
             continue
@@ -744,6 +775,9 @@ def _merge_inventories(
         else:
             keep["status"] = "filled"
         merged.append(keep)
+    for key, prev in old_by_key.items():
+        if key not in seen:
+            merged.append(prev)
     return merged
 
 

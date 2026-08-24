@@ -24,14 +24,16 @@ Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax19
 ## Co robi
 
 1. Bierze mecze lig Aleksa **od 13.08.2026** (`--od`), dociąga wyniki FT z BBC za lukę po ostatnim meczu w źródle i dokleja nadchodzące (domyślnie 7 dni).
-2. Uzupełnia braki (faule, rożne, kartki, strzały) **tylko z weryfikowalnych źródeł** — bez zmyślania liczb.
+2. **Zawsze** weryfikuje Excel na braki, ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. `--no-fill-missing` jest tylko do debugowania, nie do maila.
 3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5**.
 4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). W arkuszu **Прогнози** nie ma kolumny `результат` — typowany wynik to `прогноз_рахунок`.
 5. W poniedziałek wysyła ten plik na Gmail (na Actions: artifact z niedzielnego pipeline).
 
-Kolejność uzupełniania luk (obowiązkowa):
+Kolejność uzupełniania luk (obowiązkowa, na każdym uruchomieniu poza `--no-fill-missing`):
 
-Excel z dysku → skan komórek → `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel.
+Excel → skan pustych komórek → ponowne odpytanie `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel → **ponowna weryfikacja zapisanego pliku**.
+
+`--fill-missing` (niedzielny pipeline) **wywala się**, jeśli po weryfikacji zostaną puste statystyki.
 
 Na GitHub Actions ten JSON jest w repo + w cache workflow, żeby niedzielny run nie walił w Claude od zera.
 
@@ -78,7 +80,7 @@ Opcje:
 ```powershell
 python predykcje.py --fill-missing --send-mail   # pipeline + mail
 python send_mail.py                              # sam Excel na MAIL_TO
-python predykcje.py --no-fill-missing            # bez Serper/Claude
+python predykcje.py --no-fill-missing            # TYLKO debug — pomija JSON i API, nie do maila
 python -m pytest tests -q
 ```
 
