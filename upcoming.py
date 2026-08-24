@@ -36,6 +36,11 @@ BBC_UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 VERSUS_RE = re.compile(r"^(.+?)\s+versus\s+(.+?)\s+kick off\s+", re.I)
+SCORE_RE = re.compile(
+    r"^(.+?)\s+(\d+)\s*,\s*(.+?)\s+(\d+)\s+at\s+Full time\b",
+    re.I,
+)
+MAX_LOOKBACK_DAYS = 21
 
 BBC_LEAGUE_MAP = {
     "Premier League": "Premier League",
@@ -124,10 +129,11 @@ def complete_match_date(dd_mm: str, *, year: int | None = None, fallback: date |
         return fb.strftime("%d/%m/%Y")
 
 
-def _versus_count(el) -> int:
+def _bbc_match_count(el) -> int:
     n = 0
     for span in el.select("span.visually-hidden"):
-        if VERSUS_RE.match(span.get_text(" ", strip=True)):
+        text = span.get_text(" ", strip=True)
+        if VERSUS_RE.match(text) or SCORE_RE.match(text):
             n += 1
     return n
 
@@ -139,15 +145,16 @@ def _league_block(h2):
         if p is None:
             return None
         n_h2 = len(p.select("h2[class*=GroupHeader]"))
-        if _versus_count(p) > 0 and n_h2 == 1:
+        if _bbc_match_count(p) > 0 and n_h2 == 1:
             return p
     return None
 
 
 def parse_bbc_fixtures(html: str, match_day: date) -> list[dict]:
-    """Parsuje nadchodzące mecze lig Aleksa ze strony BBC Sport."""
+    """Parsuje mecze lig Aleksa ze strony BBC Sport (FT + nadchodzące)."""
     soup = BeautifulSoup(html or "", "lxml")
     rows: list[dict] = []
+    date_str = match_day.strftime("%d/%m/%Y")
     for h2 in soup.select("h2[class*=GroupHeader]"):
         title = h2.get_text(" ", strip=True)
         liga = BBC_LEAGUE_MAP.get(title)
@@ -157,17 +164,34 @@ def parse_bbc_fixtures(html: str, match_day: date) -> list[dict]:
         if box is None:
             continue
         for span in box.select("span.visually-hidden"):
-            m = VERSUS_RE.match(span.get_text(" ", strip=True))
+            text = span.get_text(" ", strip=True)
+            m = VERSUS_RE.match(text)
+            if m:
+                rows.append(
+                    {
+                        "Kraj": "",
+                        "Liga": liga,
+                        "_aleks_liga": liga,
+                        "Gospodarz": m.group(1).strip(),
+                        "Gość": m.group(2).strip(),
+                        "Data": date_str,
+                        "Wynik": "",
+                    }
+                )
+                continue
+            m = SCORE_RE.match(text)
             if not m:
                 continue
+            hg, ag = int(m.group(2)), int(m.group(4))
             rows.append(
                 {
                     "Kraj": "",
                     "Liga": liga,
                     "_aleks_liga": liga,
                     "Gospodarz": m.group(1).strip(),
-                    "Gość": m.group(2).strip(),
-                    "Data": match_day.strftime("%d/%m/%Y"),
+                    "Gość": m.group(3).strip(),
+                    "Data": date_str,
+                    "Wynik": f"{hg}:{ag}",
                 }
             )
     return rows
@@ -195,7 +219,7 @@ def rows_to_aleks_fixtures(
     match_day: date,
     known: dict[str, list[str]] | None = None,
 ) -> pd.DataFrame:
-    """Filtr lig Aleksa → wiersze bez wyniku (nadchodzące)."""
+    """Filtr lig Aleksa → wiersze (wynik FT, jeśli BBC go podał)."""
     known = known or {}
     ready = [r for r in rows if r.get("_aleks_liga")]
     rest = [r for r in rows if not r.get("_aleks_liga")]
@@ -208,14 +232,25 @@ def rows_to_aleks_fixtures(
         away = map_team_to_known(str(m.get("Gość") or ""), liga, known)
         if not home or not away:
             continue
+        score = str(m.get("Wynik") or m.get(COL_RESULT) or "").strip()
+        parsed = re.match(r"^(\d+)\s*[:\-]\s*(\d+)$", score)
+        btts = ""
+        if parsed:
+            hg, ag = int(parsed.group(1)), int(parsed.group(2))
+            score = f"{hg}:{ag}"
+            btts = "так" if hg > 0 and ag > 0 else "ні"
+        else:
+            score = ""
+        stats = dict(STAT_EMPTY)
+        stats["оз"] = btts
         out.append(
             {
                 COL_LIGA: liga,
                 COL_DATA: date_str,
                 COL_HOME: home,
                 COL_AWAY: away,
-                COL_RESULT: "",
-                **STAT_EMPTY,
+                COL_RESULT: score,
+                **stats,
             }
         )
     if not out:
@@ -275,17 +310,41 @@ def save_upcoming_cache(by_day: dict[str, list[dict]]) -> Path:
     return CACHE_PATH
 
 
+def lookback_days_from_history(
+    history: pd.DataFrame | None,
+    *,
+    start: date,
+    max_lookback: int = MAX_LOOKBACK_DAYS,
+) -> int:
+    """Ile dni wstecz dociągnąć wyniki BBC (luka od ostatniego meczu w źródle)."""
+    if history is None or history.empty or COL_DATA not in history.columns:
+        return 0
+    last = pd.to_datetime(history[COL_DATA], dayfirst=True, errors="coerce").max()
+    if pd.isna(last):
+        return 0
+    gap = (start - last.date()).days
+    return int(max(0, min(max_lookback, gap)))
+
+
 def fetch_upcoming_fixtures(
     *,
     days: int = 7,
     start: date | None = None,
     refresh: bool = False,
     history: pd.DataFrame | None = None,
+    lookback_days: int | None = None,
+    max_lookback: int = MAX_LOOKBACK_DAYS,
 ) -> pd.DataFrame:
-    """Pobiera nadchodzące mecze na `days` dni od `start` (domyślnie dziś)."""
+    """Pobiera mecze BBC: luka wstecz (wyniki FT) + `days` dni do przodu."""
     start = start or date.today()
-    known = known_teams_by_league(history) if history is not None else {}
-    wanted = [(start + timedelta(days=i)) for i in range(max(1, days))]
+    if lookback_days is None:
+        lookback_days = lookback_days_from_history(
+            history, start=start, max_lookback=max_lookback
+        )
+    lookback_days = max(0, int(lookback_days))
+    first = start - timedelta(days=lookback_days)
+    n_days = lookback_days + max(1, days)
+    wanted = [first + timedelta(days=i) for i in range(n_days)]
     wanted_keys = [d.strftime("%Y-%m-%d") for d in wanted]
 
     by_day: dict[str, list[dict]] = {}
@@ -305,6 +364,7 @@ def fetch_upcoming_fixtures(
             by_day[day.strftime("%Y-%m-%d")] = rows
         save_upcoming_cache(by_day)
 
+    known = known_teams_by_league(history) if history is not None else {}
     frames: list[pd.DataFrame] = []
     for day in wanted:
         rows = by_day.get(day.strftime("%Y-%m-%d")) or []
@@ -318,33 +378,76 @@ def fetch_upcoming_fixtures(
     )
 
 
+def _result_blank(value: object) -> bool:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return True
+    return str(value).strip() in {"", "nan", "None", "<NA>", "—"}
+
+
+def _match_keys(df: pd.DataFrame) -> list[tuple[str, str, str, str]]:
+    d = pd.to_datetime(df[COL_DATA], dayfirst=True, errors="coerce")
+    return list(
+        zip(
+            df[COL_LIGA].astype(str),
+            d.dt.strftime("%Y-%m-%d"),
+            df[COL_HOME].map(lambda x: canonical_name(str(x))),
+            df[COL_AWAY].map(lambda x: canonical_name(str(x))),
+        )
+    )
+
+
 def merge_upcoming(existing: pd.DataFrame, upcoming: pd.DataFrame) -> pd.DataFrame:
-    """Dokleja nadchodzące, pomijając mecze już obecne (liga+data+drużyny)."""
+    """Dokleja brakujące mecze i uzupełnia puste wyniki FT z BBC."""
     if upcoming is None or upcoming.empty:
         return existing
     if existing.empty:
         return upcoming.copy()
 
-    def keys(df: pd.DataFrame) -> list[tuple[str, str, str, str]]:
-        d = pd.to_datetime(df[COL_DATA], dayfirst=True, errors="coerce")
-        return list(
-            zip(
-                df[COL_LIGA].astype(str),
-                d.dt.strftime("%Y-%m-%d"),
-                df[COL_HOME].map(lambda x: canonical_name(str(x))),
-                df[COL_AWAY].map(lambda x: canonical_name(str(x))),
-            )
-        )
-
-    have = set(keys(existing))
-    mask = [k not in have for k in keys(upcoming)]
-    add = upcoming.loc[mask].copy()
-    if add.empty:
-        return existing
-    for col in existing.columns:
+    out = existing.copy()
+    have = {k: pos for pos, k in enumerate(_match_keys(out))}
+    add_pos: list[int] = []
+    up_keys = _match_keys(upcoming)
+    for i, key in enumerate(up_keys):
+        incoming = upcoming.iloc[i]
+        score = incoming.get(COL_RESULT)
+        if key in have:
+            if _result_blank(score):
+                continue
+            idx = out.index[have[key]]
+            if COL_RESULT not in out.columns or _result_blank(out.at[idx, COL_RESULT]):
+                out.at[idx, COL_RESULT] = str(score).strip()
+                parsed = re.match(r"^(\d+)\s*[:\-]\s*(\d+)$", str(score).strip())
+                if parsed and "оз" in out.columns and _result_blank(out.at[idx, "оз"]):
+                    hg, ag = int(parsed.group(1)), int(parsed.group(2))
+                    out.at[idx, "оз"] = "так" if hg > 0 and ag > 0 else "ні"
+            continue
+        add_pos.append(i)
+    if not add_pos:
+        return out
+    add = upcoming.iloc[add_pos].copy()
+    for col in out.columns:
         if col not in add.columns:
             add[col] = pd.NA
-    return pd.concat([existing, add[list(existing.columns)]], ignore_index=True)
+    return pd.concat([out, add[list(out.columns)]], ignore_index=True)
+
+
+def upsert_matches(existing: pd.DataFrame, updated: pd.DataFrame) -> pd.DataFrame:
+    """Zastępuje wiersze o tym samym kluczu (liga+data+drużyny), resztę zostawia."""
+    if updated is None or updated.empty:
+        return existing
+    if existing is None or existing.empty:
+        return updated.copy()
+    drop = set(_match_keys(updated))
+    keep_mask = [k not in drop for k in _match_keys(existing)]
+    keep = existing.loc[keep_mask].copy()
+    add = updated.copy()
+    for col in keep.columns:
+        if col not in add.columns:
+            add[col] = pd.NA
+    cols = list(keep.columns) if not keep.empty else list(add.columns)
+    if keep.empty:
+        return add[cols].reset_index(drop=True)
+    return pd.concat([keep, add[cols]], ignore_index=True)
 
 
 def main(argv: list[str] | None = None) -> None:

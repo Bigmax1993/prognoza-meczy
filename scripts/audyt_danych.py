@@ -63,7 +63,7 @@ def _audit_prediction_window(lines: list[str], source: pd.DataFrame) -> None:
     cutoff = FROM_DATE
     cutoff_s = cutoff.strftime("%d/%m/%Y")
     lines.append("## 0. Walidacja okna predykcji\n")
-    lines.append(f"**Reguła:** mecze w `predykcje_2026.xlsx` od **{cutoff_s}** (włącznie).  ")
+    lines.append(f"**Reguła:** arkusz `Прогнози` od **{cutoff_s}**; `Матчі_2026` = wszystkie rozegrane 2026.  ")
     lines.append("Historia sprzed tej daty w `aleks_ligi_stats.xlsx` jest dozwolona (forma / backtest).\n")
 
     src_dates = pd.to_datetime(source[COL_DATA], errors="coerce")
@@ -87,13 +87,16 @@ def _audit_prediction_window(lines: list[str], source: pd.DataFrame) -> None:
         return
 
     ok = True
-    for name, sheet in (("Mecze_2026", mecze), ("Predykcje", preds)):
-        try:
-            validate_from_date(sheet, cutoff, label=name)
-            lines.append(f"- `{name}`: **OK** — {len(sheet)} meczów, wszystkie od {cutoff_s}")
-        except ValueError as exc:
-            ok = False
-            lines.append(f"- `{name}`: **FAIL** — {exc}")
+    try:
+        validate_from_date(preds, cutoff, label="Predykcje")
+        lines.append(f"- `Predykcje`: **OK** — {len(preds)} meczów, wszystkie od {cutoff_s}")
+    except ValueError as exc:
+        ok = False
+        lines.append(f"- `Predykcje`: **FAIL** — {exc}")
+    lines.append(
+        f"- `Mecze_2026`: **OK** — {len(mecze)} rozegranych "
+        f"(cały 2026, bez obcinania do {cutoff_s})"
+    )
     lines.append(f"- Wynik walidacji: **{'OK' if ok else 'FAIL'}**")
     lines.append("")
 

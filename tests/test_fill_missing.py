@@ -216,6 +216,40 @@ def test_scan_missing_skips_future_and_finds_played_stats_gap():
     assert "кутові_господар" in gaps[0]["missing"]
 
 
+def test_scan_missing_from_date_skips_older_played():
+    df = pd.DataFrame(
+        [
+            {
+                "ліга": "Allsvenskan",
+                "дата": "01/05/2026",
+                "господар": "Elfsborg",
+                "гість": "Hacken",
+                "результат": "1:0",
+                "кутові_господар": pd.NA,
+                "кутові_гість": pd.NA,
+                "кутові": pd.NA,
+            },
+            {
+                "ліга": "Allsvenskan",
+                "дата": "16/08/2026",
+                "господар": "Malmo FF",
+                "гість": "AIK",
+                "результат": "2:1",
+                "кутові_господар": pd.NA,
+                "кутові_гість": pd.NA,
+                "кутові": pd.NA,
+            },
+        ]
+    )
+    gaps = fm.scan_missing(
+        df,
+        as_of=pd.Timestamp("2026-08-24"),
+        from_date=pd.Timestamp("2026-08-13"),
+    )
+    assert len(gaps) == 1
+    assert gaps[0]["home"] == "Malmo FF"
+
+
 def test_validate_stats_rejects_wrong_score_and_fills_totals():
     gap = {
         "result": "3:0",

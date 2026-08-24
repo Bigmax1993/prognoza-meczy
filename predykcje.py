@@ -1477,7 +1477,6 @@ def export_excel(
 ) -> Path:
     out_path = path or OUT_XLSX
     if from_date is not None:
-        validate_from_date(df_2026, from_date, label="Mecze")
         validate_from_date(predictions, from_date, label="Predykcje")
     wb = Workbook()
     wb.remove(wb.active)
@@ -1511,7 +1510,7 @@ def main(argv: list[str] | None = None) -> None:
         "--od",
         default=FROM_DATE.strftime("%d/%m/%Y"),
         type=parse_od_date,
-        help="Poczatek zakresu meczow w Excelu (dd/mm/yyyy), domyslnie 13/08/2026",
+        help="Poczatek okna predykcji (dd/mm/yyyy). Arkusz Матчі_2026 ma wszystkie rozegrane 2026.",
     )
     parser.add_argument(
         "--no-upcoming",
@@ -1535,9 +1534,8 @@ def main(argv: list[str] | None = None) -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    df_2026, df_history = load_2026_data()
-    n_year = len(df_2026)
-    df_2026 = filter_from_date(df_2026, args.od)
+    df_year, df_history = load_2026_data()
+    n_year = len(df_year)
     if not args.no_upcoming:
         try:
             import upcoming as up
@@ -1551,24 +1549,29 @@ def main(argv: list[str] | None = None) -> None:
                 fixtures[COL_DATA] = pd.to_datetime(fixtures[COL_DATA], dayfirst=True, errors="coerce")
                 fixtures = _to_numeric(fixtures)
                 fixtures = _attach_goals(fixtures)
-                before = len(df_2026)
-                df_2026 = up.merge_upcoming(df_2026, fixtures)
+                before = len(df_year)
+                n_scored = int(
+                    fixtures[COL_RESULT].astype(str).str.match(r"^\d+:\d+$").sum()
+                ) if COL_RESULT in fixtures.columns else 0
+                df_year = up.merge_upcoming(df_year, fixtures)
                 _safe_print(
-                    f"Nadchodzace (BBC): {len(fixtures)} "
-                    f"(dodano {len(df_2026) - before})"
+                    f"BBC: {len(fixtures)} meczow "
+                    f"(FT {n_scored}, dodano {len(df_year) - before})"
                 )
             else:
-                _safe_print("Nadchodzace BBC: 0 meczow lig Aleksa")
+                _safe_print("BBC: 0 meczow lig Aleksa")
         except Exception as exc:
             logger.warning("Upcoming pominiete: %s", exc)
             _safe_print(f"Upcoming pominiete: {exc}")
+    df_2026 = filter_from_date(df_year, args.od)
     validate_from_date(df_2026, args.od, label="Mecze")
     with_score = 0
     if COL_RESULT in df_history.columns:
         with_score = int(df_history[COL_RESULT].astype(str).str.match(r"^\d+:\d+$").sum())
     _safe_print(
-        f"Mecze od {args.od.strftime('%d/%m/%Y')}: {len(df_2026)} "
-        f"(z {n_year} w 2026) | historii: {len(df_history)} | z wynikiem: {with_score}"
+        f"Arkusz Mecze 2026: {len(df_year)} (zrodlo {n_year}) | "
+        f"okno predykcji od {args.od.strftime('%d/%m/%Y')}: {len(df_2026)} | "
+        f"historii: {len(df_history)} | z wynikiem: {with_score}"
     )
     if df_2026.empty:
         raise SystemExit(
@@ -1610,6 +1613,9 @@ def main(argv: list[str] | None = None) -> None:
                 if inv:
                     df_history = fill.apply_inventory(df_history, inv)
                     df_history = fill.complete_row_totals(df_history)
+                import upcoming as up
+
+                df_year = up.upsert_matches(df_year, df_2026)
         except Exception as exc:
             logger.warning("Uzupelnienie luk pominiete: %s", exc)
             _safe_print(f"Uzupelnienie luk pominiete: {exc}")
@@ -1627,7 +1633,7 @@ def main(argv: list[str] | None = None) -> None:
             _safe_print(f"  {r['metryka']}: {r['wartosc']}")
 
     path = export_excel(
-        df_2026,
+        df_year,
         predictions,
         team_avg,
         league_avg,
@@ -1645,6 +1651,7 @@ def main(argv: list[str] | None = None) -> None:
                 mecze_x, preds_x, vrep = fill.verify_exported_workbook(
                     path,
                     live=fill.has_keys(),
+                    from_date=args.od,
                 )
                 _safe_print(
                     f"Weryfikacja Excela: puste {vrep['empty_before']['fields']} pol → "

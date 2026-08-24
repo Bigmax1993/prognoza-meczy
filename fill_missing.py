@@ -674,14 +674,18 @@ def scan_missing(
     df: pd.DataFrame,
     *,
     as_of: pd.Timestamp | None = None,
+    from_date: pd.Timestamp | None = None,
 ) -> list[dict[str, Any]]:
     """Braki tylko w meczach już rozegranych (wynik albo data < as_of)."""
     if df is None or df.empty:
         return []
     cut = (as_of or pd.Timestamp.now()).normalize()
+    start = pd.Timestamp(from_date).normalize() if from_date is not None else None
     gaps: list[dict[str, Any]] = []
     for _, row in df.iterrows():
         date = pd.to_datetime(row.get(COL_DATA), dayfirst=True, errors="coerce")
+        if start is not None and pd.notna(date) and date.normalize() < start:
+            continue
         has_score = not _is_blank(row.get(COL_RESULT))
         played = has_score or (pd.notna(date) and date.normalize() < cut)
         if not played:
@@ -759,13 +763,14 @@ def build_inventory(
     df: pd.DataFrame,
     *,
     as_of: pd.Timestamp | None = None,
+    from_date: pd.Timestamp | None = None,
     path: Path | None = None,
 ) -> dict[str, Any]:
     """Najpierw JSON: skanuje braki, scala z poprzednim plikiem, zapisuje."""
     cut = (as_of or pd.Timestamp.now()).normalize()
     dates = pd.to_datetime(df[COL_DATA], dayfirst=True, errors="coerce") if not df.empty else pd.Series(dtype="datetime64[ns]")
     future = int(((dates.dt.normalize() >= cut) & df[COL_RESULT].map(_is_blank)).sum()) if not df.empty else 0
-    scanned = scan_missing(df, as_of=cut)
+    scanned = scan_missing(df, as_of=cut, from_date=from_date)
     prev = load_missing_json(path or STATS_JSON)
     gaps = _merge_inventories(scanned, prev)
     report = {
@@ -912,6 +917,7 @@ def fill_stats(
     df: pd.DataFrame,
     *,
     as_of: pd.Timestamp | None = None,
+    from_date: pd.Timestamp | None = None,
     search_fn: Callable[[str], list[dict[str, str]]] | None = None,
     fetch_fn: Callable[[str], str] | None = None,
     decide_fn: Callable[..., dict[str, Any]] | None = None,
@@ -921,7 +927,7 @@ def fill_stats(
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """JSON braków → Serper/Claude (opcjonalnie) → walidacja → DataFrame."""
     path = cache_path or STATS_JSON
-    inventory = build_inventory(df, as_of=as_of, path=path)
+    inventory = build_inventory(df, as_of=as_of, from_date=from_date, path=path)
     if not live:
         return apply_inventory(df, inventory), inventory
 
@@ -1043,10 +1049,11 @@ def audit_missing(
     df: pd.DataFrame,
     *,
     as_of: pd.Timestamp | None = None,
+    from_date: pd.Timestamp | None = None,
 ) -> dict[str, Any]:
-    """Skanuje WSZYSTKIE rozegrane mecze pod kątem pustych pól."""
+    """Skanuje rozegrane mecze (opcjonalnie od from_date) pod kątem pustych pól."""
     checked = complete_row_totals(df)
-    gaps = scan_missing(checked, as_of=as_of)
+    gaps = scan_missing(checked, as_of=as_of, from_date=from_date)
     return {
         "matches": len(gaps),
         "fields": int(sum(len(g.get("missing") or []) for g in gaps)),
@@ -1067,6 +1074,7 @@ def verify_and_fill(
     df: pd.DataFrame,
     *,
     as_of: pd.Timestamp | None = None,
+    from_date: pd.Timestamp | None = None,
     search_fn: Callable[[str], list[dict[str, str]]] | None = None,
     fetch_fn: Callable[[str], str] | None = None,
     decide_fn: Callable[..., dict[str, Any]] | None = None,
@@ -1074,7 +1082,7 @@ def verify_and_fill(
     live: bool = True,
     max_rounds: int = 3,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Weryfikuje braki wszędzie i dociąga je w rundach, aż nie ma postępu."""
+    """Weryfikuje braki i dociąga je w rundach, aż nie ma postępu."""
     path = cache_path or STATS_JSON
     out = complete_row_totals(df)
     inventory: dict[str, Any] = load_missing_json(path)
@@ -1083,7 +1091,7 @@ def verify_and_fill(
     last_fields: int | None = None
     used_rounds = 0
     for rnd in range(max(1, max_rounds)):
-        audit = audit_missing(out, as_of=as_of)
+        audit = audit_missing(out, as_of=as_of, from_date=from_date)
         n = int(audit["fields"])
         if n == 0:
             used_rounds = rnd
@@ -1096,6 +1104,7 @@ def verify_and_fill(
         out, inventory = fill_stats(
             out,
             as_of=as_of,
+            from_date=from_date,
             search_fn=search_fn,
             fetch_fn=fetch_fn,
             decide_fn=decide_fn,
@@ -1107,9 +1116,9 @@ def verify_and_fill(
         if not live:
             break
     out = complete_row_totals(out)
-    audit = audit_missing(out, as_of=as_of)
+    audit = audit_missing(out, as_of=as_of, from_date=from_date)
     if not inventory:
-        inventory = build_inventory(out, as_of=as_of, path=path)
+        inventory = build_inventory(out, as_of=as_of, from_date=from_date, path=path)
     inventory["verification"] = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "rounds": used_rounds,
@@ -1143,6 +1152,7 @@ def verify_exported_workbook(
     *,
     json_path: Path | None = None,
     as_of: pd.Timestamp | None = None,
+    from_date: pd.Timestamp | None = None,
     search_fn: Callable[[str], list[dict[str, str]]] | None = None,
     fetch_fn: Callable[[str], str] | None = None,
     decide_fn: Callable[..., dict[str, Any]] | None = None,
@@ -1153,12 +1163,13 @@ def verify_exported_workbook(
 
     1. Czyta Mecze_2026 z zapisanego xlsx
     2. Puste pola najpierw z cache/missing_data.json
-    3. Reszta: Serper + BS4/requests + Claude + walidacja → JSON → DataFrame
+    3. Reszta: Serper + HTML + Claude + walidacja → JSON → DataFrame
+    Braki skanowane od `from_date` (okno predykcji), nie cały sezon.
     """
     cache = json_path or STATS_JSON
     mecze, preds = read_excel_mecze(xlsx_path)
     mecze = complete_row_totals(mecze)
-    before = audit_missing(mecze, as_of=as_of)
+    before = audit_missing(mecze, as_of=as_of, from_date=from_date)
     report: dict[str, Any] = {
         "excel": str(xlsx_path),
         "empty_before": {"matches": before["matches"], "fields": before["fields"]},
@@ -1173,7 +1184,7 @@ def verify_exported_workbook(
     inv = load_missing_json(cache)
     mecze = apply_inventory(mecze, inv)
     mecze = complete_row_totals(mecze)
-    after_json = audit_missing(mecze, as_of=as_of)
+    after_json = audit_missing(mecze, as_of=as_of, from_date=from_date)
     report["filled_from_json"] = int(before["fields"] - after_json["fields"])
 
     after = after_json
@@ -1181,6 +1192,7 @@ def verify_exported_workbook(
         mecze, inv = verify_and_fill(
             mecze,
             as_of=as_of,
+            from_date=from_date,
             search_fn=search_fn,
             fetch_fn=fetch_fn,
             decide_fn=decide_fn,
@@ -1189,7 +1201,7 @@ def verify_exported_workbook(
             max_rounds=max_rounds,
         )
         mecze = complete_row_totals(mecze)
-        after = audit_missing(mecze, as_of=as_of)
+        after = audit_missing(mecze, as_of=as_of, from_date=from_date)
         report["filled_from_api"] = int(after_json["fields"] - after["fields"])
 
     report["empty_after"] = {"matches": after["matches"], "fields": after["fields"]}

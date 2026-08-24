@@ -446,3 +446,35 @@ def test_export_excel_future_sheet_calendar_only(form_history, tmp_path):
     eve = preds_xl[preds_xl["господар"].astype(str) == "Everton"].iloc[0]
     assert str(eve["прогноз_рахунок"]).strip() not in {"", "—", "nan"}
     assert ":" in str(eve["прогноз_рахунок"])
+
+
+def test_export_excel_played_sheet_keeps_full_year(form_history, tmp_path):
+    df_2026, df_hist = pred.load_2026_data(form_history)
+    early = pd.DataFrame(
+        {
+            "ліга": ["Premier League"],
+            "дата": [pd.Timestamp("2026-01-10")],
+            "господар": ["Liverpool"],
+            "гість": ["Everton"],
+            "результат": ["2:0"],
+        }
+    )
+    early = pred._to_numeric(early)
+    early = pred._attach_goals(early)
+    df_all = pd.concat([early, df_2026], ignore_index=True)
+    team_avg = pred.compute_team_averages(df_hist)
+    league_avg = pred.compute_league_averages(df_all)
+    preds = pred.build_predictions(df_2026, df_hist)
+    out = tmp_path / "predykcje_2026.xlsx"
+    pred.export_excel(
+        df_all,
+        preds,
+        team_avg,
+        league_avg,
+        out,
+        as_of=pd.Timestamp("2026-08-18"),
+    )
+    mecze = pd.read_excel(out, sheet_name="Матчі_2026")
+    assert "Liverpool" in set(mecze["господар"].astype(str))
+    dates = pd.to_datetime(mecze["дата"], dayfirst=True)
+    assert dates.min() < pred.FROM_DATE
