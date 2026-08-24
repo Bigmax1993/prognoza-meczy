@@ -127,7 +127,7 @@ Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (
 | Workflow | Kiedy | Co |
 |----------|--------|-----|
 | [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` (Excel, 7 dni) |
-| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **02:00** | ściąga artifact z ostatniego udanego pipeline i wysyła mail |
+| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **05:00** | ściąga artifact z ostatniego udanego pipeline i wysyła mail |
 | [Testy](.github/workflows/test.yml) | push na `main` (też ręcznie) | `pytest tests` |
 
 Ręcznie: **Actions** → wybrany workflow → **Run workflow**.  
