@@ -360,6 +360,22 @@ def test_split_played_and_future_moves_unplayed():
     assert list(future.columns) == list(df.columns)
 
 
+def test_upcoming_for_predictions_excludes_played():
+    as_of = pd.Timestamp("2026-08-18")
+    df = pd.DataFrame(
+        {
+            "ліга": ["Premier League", "La Liga", "Serie A"],
+            "дата": ["17/08/2026", "22/08/2026", "16/08/2026"],
+            "господар": ["Arsenal", "Valencia", "Inter"],
+            "гість": ["Chelsea", "Celta", "Monza"],
+            "результат": ["2:1", None, "1:0"],
+        }
+    )
+    upcoming = pred.upcoming_for_predictions(df, as_of=as_of)
+    assert list(upcoming["господар"]) == ["Valencia"]
+    assert len(upcoming) == 1
+
+
 def test_export_excel_creates_sheets(form_history, tmp_path):
     df_2026, df_hist = pred.load_2026_data(form_history)
     team_avg = pred.compute_team_averages(df_hist)
@@ -424,7 +440,8 @@ def test_export_excel_future_sheet_calendar_only(form_history, tmp_path):
     df_2026 = pd.concat([df_2026, extra], ignore_index=True)
     team_avg = pred.compute_team_averages(df_hist)
     league_avg = pred.compute_league_averages(df_2026)
-    preds = pred.build_predictions(df_2026, df_hist)
+    df_upcoming = pred.upcoming_for_predictions(df_2026, as_of=pd.Timestamp("2026-08-18"))
+    preds = pred.build_predictions(df_upcoming, df_hist)
     out = tmp_path / "predykcje_2026.xlsx"
     pred.export_excel(
         df_2026,
@@ -465,7 +482,8 @@ def test_export_excel_played_sheet_from_cutoff_keeps_recent_ft(form_history, tmp
     window = pred.filter_from_date(df_all, pred.FROM_DATE)
     team_avg = pred.compute_team_averages(df_hist)
     league_avg = pred.compute_league_averages(window)
-    preds = pred.build_predictions(window, df_hist)
+    df_upcoming = pred.upcoming_for_predictions(window, as_of=pd.Timestamp("2026-08-24"))
+    preds = pred.build_predictions(df_upcoming, df_hist)
     out = tmp_path / "predykcje_2026.xlsx"
     pred.export_excel(
         window,
@@ -477,9 +495,14 @@ def test_export_excel_played_sheet_from_cutoff_keeps_recent_ft(form_history, tmp
         as_of=pd.Timestamp("2026-08-24"),
     )
     mecze = pd.read_excel(out, sheet_name="Матчі_2026")
+    preds_xl = pd.read_excel(out, sheet_name="Прогнози")
     homes = set(mecze["господар"].astype(str))
     assert "Liverpool" not in homes
     assert "Everton" in homes
+    if "господар" in preds_xl.columns:
+        assert "Everton" not in set(preds_xl["господар"].astype(str))
+    else:
+        assert len(preds_xl) <= 1
     dates = pd.to_datetime(mecze["дата"], dayfirst=True)
     assert dates.min() >= pred.FROM_DATE
 

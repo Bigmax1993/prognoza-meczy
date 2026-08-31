@@ -236,6 +236,16 @@ def split_played_and_future(
     return played, future
 
 
+def upcoming_for_predictions(
+    df: pd.DataFrame,
+    *,
+    as_of: pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    """Tylko nadchodzące mecze (bez wyniku, data >= dziś) — do arkusza Прогнози."""
+    _, future = split_played_and_future(df, as_of=as_of)
+    return future.copy()
+
+
 def parse_score(value: object) -> tuple[int, int] | None:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
@@ -1477,7 +1487,8 @@ def export_excel(
     out_path = path or OUT_XLSX
     if from_date is not None:
         validate_from_date(df_2026, from_date, label="Mecze")
-        validate_from_date(predictions, from_date, label="Predykcje")
+        if not predictions.empty:
+            validate_from_date(predictions, from_date, label="Predykcje")
     wb = Workbook()
     wb.remove(wb.active)
     table_names: set[str] = set()
@@ -1677,9 +1688,16 @@ def main(argv: list[str] | None = None) -> None:
 
     team_avg = compute_team_averages(df_history)
     league_avg = compute_league_averages(df_2026)
-    _safe_print("Buduje predykcje (forma + O/U)...")
-    predictions = build_predictions(df_2026, df_history, use_as_of=True)
-    validate_from_date(predictions, args.od, label="Predykcje")
+    df_upcoming = upcoming_for_predictions(df_2026)
+    _safe_print(
+        f"Buduje predykcje (forma + O/U) dla {len(df_upcoming)} nadchodzacych meczow "
+        f"(z {len(df_2026)} od {args.od.strftime('%d/%m/%Y')})..."
+    )
+    if df_upcoming.empty:
+        _safe_print("Brak nadchodzacych meczow — arkusz Прогнози bedzie pusty.")
+    predictions = build_predictions(df_upcoming, df_history, use_as_of=True)
+    if not predictions.empty:
+        validate_from_date(predictions, args.od, label="Predykcje")
 
     _safe_print("Backtest 2025...")
     bt_detail, bt_summary = run_backtest(df_history, year=2025)

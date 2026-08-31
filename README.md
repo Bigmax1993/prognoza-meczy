@@ -25,8 +25,8 @@ Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax19
 
 1. Bierze mecze lig Aleksa **od 13.08.2026** (`--od`), dociąga wyniki FT z BBC za lukę po ostatnim meczu w źródle i dokleja nadchodzące (domyślnie 7 dni).
 2. **Zawsze** (bez flagi do wyłączenia) weryfikuje braki, ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Pusty Excel po weryfikacji jest błędem.
-3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5**.
-4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). W arkuszu **Прогнози** nie ma kolumny `результат` — typowany wynik to `прогноз_рахунок`.
+3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5** — **tylko dla nadchodzących meczów** (bez wyniku, data ≥ dziś).
+4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). Rozegrane od 13.08 trafiają do **Матчі_2026**; nadchodzące do **Майбутні_матчі** i **Прогнози** (bez kolumny `результат` — typowany wynik to `прогноз_рахунок`).
 5. W poniedziałek wysyła ten plik na Gmail (na Actions: artifact z niedzielnego pipeline).
 
 Kolejność uzupełniania luk (**zawsze**, na każdym `python predykcje.py`):
@@ -49,7 +49,7 @@ Plik: **`predykcje_2026.xlsx`**
 |--------|-----------|
 | **Матчі_2026** | Rozegrane mecze **od 13.08.2026** (wynik, **Чи обидві забили?**, faule / rożne / kartki / strzały) |
 | **Майбутні_матчі** | Kalendarz (ліга, дата, господар, гість) — bez wyniku |
-| **Прогнози** | Typy: `ліга`, `дата`, `господар`, `гість`, `статус`, `причина`, `прогноз_переможець`, prawdopodobieństwa 1X2, `прогноз_рахунок`, BTTS, O/U. **Bez** kolumny `результат` — wynik FT jest tylko w Матчі_2026 |
+| **Прогнози** | **Tylko nadchodzące** mecze (jak **Майбутні_матчі**): typy 1X2, BTTS, O/U. **Bez** kolumny `результат` — wynik FT jest tylko w Матчі_2026 |
 
 Linie O/U są stałe celowo: `лінія_кутові` = 9.5, `лінія_жовті` = 3.5. Różne per mecz są `очікувані_*` i `прогноз_*` (більше / менше).
 
