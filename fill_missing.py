@@ -700,7 +700,7 @@ def scan_missing(
     as_of: pd.Timestamp | None = None,
     from_date: pd.Timestamp | None = None,
 ) -> list[dict[str, Any]]:
-    """Braki tylko w meczach już rozegranych (wynik albo data < as_of)."""
+    """Braki tylko w meczach już rozegranych (wynik albo data < as_of), opcjonalnie od from_date."""
     if df is None or df.empty:
         return []
     cut = (as_of or pd.Timestamp.now()).normalize()
@@ -1195,7 +1195,7 @@ def verify_exported_workbook(
     1. Czyta Mecze_2026 z zapisanego xlsx
     2. Puste pola najpierw z cache/missing_data.json
     3. Reszta: Serper + HTML + Claude + walidacja → JSON → DataFrame
-    Braki skanowane od `from_date` (okno predykcji), nie cały sezon.
+    Braki skanowane od `from_date` (domyślnie ostatnie 7 dni w predykcje.py), nie cały sezon od --od.
     """
     cache = json_path or STATS_JSON
     mecze, preds = read_excel_mecze(xlsx_path)

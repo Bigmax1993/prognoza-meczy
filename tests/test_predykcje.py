@@ -507,6 +507,11 @@ def test_export_excel_played_sheet_from_cutoff_keeps_recent_ft(form_history, tmp
     assert dates.min() >= pred.FROM_DATE
 
 
+def test_fill_from_date_last_week():
+    as_of = pd.Timestamp("2026-08-31")
+    assert pred.fill_from_date(as_of, fill_days=7) == pd.Timestamp("2026-08-24")
+
+
 def test_fill_played_requires_keys_when_complete(monkeypatch):
     import fill_missing as fill
 
@@ -514,7 +519,7 @@ def test_fill_played_requires_keys_when_complete(monkeypatch):
     df = pd.DataFrame()
     with pytest.raises(SystemExit, match="SERPER_API_KEY"):
         pred._fill_played_from_json_and_api(
-            df, df, df, from_date=pred.FROM_DATE, require_complete=True
+            df, df, df, fill_from=pred.FROM_DATE, require_complete=True
         )
 
 

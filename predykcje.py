@@ -318,6 +318,17 @@ def validate_from_date(
         )
 
 
+def fill_from_date(
+    as_of: pd.Timestamp | None = None,
+    *,
+    fill_days: int = 7,
+) -> pd.Timestamp:
+    """Początek okna uzupełniania statystyk (Serper/Claude): ostatnie fill_days dni."""
+    cut = pd.Timestamp(as_of).normalize() if as_of is not None else pd.Timestamp.now().normalize()
+    days = max(1, int(fill_days))
+    return cut - pd.Timedelta(days=days)
+
+
 def load_data(
     path: Path | None = None,
     *,
@@ -1520,10 +1531,10 @@ def _fill_played_from_json_and_api(
     df_history: pd.DataFrame,
     df_year: pd.DataFrame,
     *,
-    from_date: pd.Timestamp,
+    fill_from: pd.Timestamp,
     require_complete: bool,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Zawsze: skan braków → JSON → API (gdy są klucze). `--fill-missing` nie pozwala na puste pola."""
+    """Zawsze: skan braków → JSON → API (gdy są klucze). Tylko mecze od fill_from."""
     import fill_missing as fill
     import upcoming as up
 
@@ -1536,7 +1547,7 @@ def _fill_played_from_json_and_api(
         _safe_print("Braki: zapisuje JSON bez API (brak SERPER_API_KEY / ANTHROPIC_API_KEY)")
     try:
         df_2026, inv = fill.verify_and_fill(
-            df_2026, live=live, max_rounds=3, from_date=from_date
+            df_2026, live=live, max_rounds=3, from_date=fill_from
         )
     except fill.ClaudeAuthError as exc:
         logger.warning("%s", exc)
@@ -1568,10 +1579,10 @@ def _fill_played_from_json_and_api(
 def _verify_exported_stats(
     path: Path,
     *,
-    from_date: pd.Timestamp,
+    fill_from: pd.Timestamp,
     require_complete: bool,
 ) -> tuple[pd.DataFrame | None, pd.DataFrame | None, bool]:
-    """Po zapisie Excela: puste komórki → JSON ponownie → API na resztę."""
+    """Po zapisie Excela: puste komórki → JSON ponownie → API na resztę (tylko od fill_from)."""
     import fill_missing as fill
 
     live = fill.has_keys()
@@ -1579,7 +1590,7 @@ def _verify_exported_stats(
         mecze_x, preds_x, vrep = fill.verify_exported_workbook(
             path,
             live=live,
-            from_date=from_date,
+            from_date=fill_from,
         )
     except fill.ClaudeAuthError as exc:
         logger.warning("%s", exc)
@@ -1625,6 +1636,12 @@ def main(argv: list[str] | None = None) -> None:
         "--fill-missing",
         action="store_true",
         help="Zawsze wlaczone: JSON + Serper/Claude + weryfikacja Excela (flaga zostaje dla CI)",
+    )
+    parser.add_argument(
+        "--fill-days",
+        type=int,
+        default=7,
+        help="Ile dni wstecz uzupelniac braki statystyk (Serper/Claude), domyslnie 7",
     )
     parser.add_argument(
         "--send-mail",
@@ -1678,11 +1695,16 @@ def main(argv: list[str] | None = None) -> None:
             f"Brak meczow od {args.od.strftime('%d/%m/%Y')} — nie mozna wygenerowac predykcji."
         )
 
+    fill_cutoff = fill_from_date(fill_days=args.fill_days)
+    _safe_print(
+        f"Uzupelnianie statystyk (JSON/Serper/Claude): ostatnie {args.fill_days} dni "
+        f"(od {fill_cutoff.strftime('%d/%m/%Y')})"
+    )
     df_2026, df_history, df_year = _fill_played_from_json_and_api(
         df_2026,
         df_history,
         df_year,
-        from_date=args.od,
+        fill_from=fill_cutoff,
         require_complete=True,
     )
 
@@ -1717,7 +1739,7 @@ def main(argv: list[str] | None = None) -> None:
 
     mecze_x, preds_x, changed = _verify_exported_stats(
         path,
-        from_date=args.od,
+        fill_from=fill_cutoff,
         require_complete=True,
     )
     if changed and mecze_x is not None:

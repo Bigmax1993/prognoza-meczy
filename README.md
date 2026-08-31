@@ -24,16 +24,16 @@ Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax19
 ## Co robi
 
 1. Bierze mecze lig Aleksa **od 13.08.2026** (`--od`), dociąga wyniki FT z BBC za lukę po ostatnim meczu w źródle i dokleja nadchodzące (domyślnie 7 dni).
-2. **Zawsze** (bez flagi do wyłączenia) weryfikuje braki, ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Pusty Excel po weryfikacji jest błędem.
+2. **Zawsze** weryfikuje braki w **ostatnim tygodniu** rozegranych meczów (domyślnie `--fill-days 7`): ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Starsze mecze (od 13.08) zostają w Excelu, ale bez wołania API. Pusty Excel po weryfikacji **w tym oknie** jest błędem.
 3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5** — **tylko dla nadchodzących meczów** (bez wyniku, data ≥ dziś).
 4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). Rozegrane od 13.08 trafiają do **Матчі_2026**; nadchodzące do **Майбутні_матчі** i **Прогнози** (bez kolumny `результат` — typowany wynik to `прогноз_рахунок`).
 5. W poniedziałek wysyła ten plik na Gmail (na Actions: artifact z niedzielnego pipeline).
 
 Kolejność uzupełniania luk (**zawsze**, na każdym `python predykcje.py`):
 
-Excel → skan pustych komórek → ponowne odpytanie `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel → **ponowna weryfikacja zapisanego pliku**.
+Excel → skan pustych komórek **(ostatnie 7 dni)** → ponowne odpytanie `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel → **ponowna weryfikacja zapisanego pliku (te same 7 dni)**.
 
-Pipeline **wywala się**, jeśli po weryfikacji zostaną puste statystyki. Nie ma flagi, która to pomija.
+Pipeline **wywala się**, jeśli po weryfikacji zostaną puste statystyki **w meczach z ostatniego tygodnia**. Nie ma flagi, która to pomija.
 
 Na GitHub Actions ten JSON jest w repo + w cache workflow, żeby niedzielny run nie walił w Claude od zera.
 
