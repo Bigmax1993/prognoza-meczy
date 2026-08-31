@@ -573,6 +573,89 @@ def test_verify_excel_uses_api_when_json_lacks_value(tmp_path):
     assert report["filled_from_api"] >= 1
 
 
+def test_merge_stats_from_workbook_fills_blanks_only(tmp_path):
+    target = pd.DataFrame(
+        [
+            {
+                "ліга": "Eliteserien",
+                "дата": "16/08/2026",
+                "господар": "Elfsborg",
+                "гість": "Vasteras SK",
+                "результат": "1:3",
+                "фоли_господар": pd.NA,
+                "фоли_гість": pd.NA,
+                "фоли": pd.NA,
+                "кутові_господар": pd.NA,
+                "кутові_гість": pd.NA,
+                "кутові": pd.NA,
+            }
+        ]
+    )
+    source = target.copy()
+    source.loc[0, "фоли_господар"] = 11
+    source.loc[0, "фоли_гість"] = 14
+    source.loc[0, "фоли"] = 25
+    source.loc[0, "кутові_господар"] = 6
+    source.loc[0, "кутові_гість"] = 3
+    source.loc[0, "кутові"] = 9
+    xlsx = tmp_path / "prev.xlsx"
+    _write_test_xlsx(xlsx, source)
+    out, n = fm.merge_stats_from_workbook(target, xlsx)
+    assert n == 6
+    assert int(out.iloc[0]["фоли"]) == 25
+    assert int(out.iloc[0]["кутові"]) == 9
+
+
+def test_merge_stats_from_workbook_does_not_overwrite_existing(tmp_path):
+    target = pd.DataFrame(
+        [
+            {
+                "ліга": "Eliteserien",
+                "дата": "16/08/2026",
+                "господар": "Elfsborg",
+                "гість": "Vasteras SK",
+                "результат": "1:3",
+                "фоли_господар": 9,
+                "фоли_гість": pd.NA,
+                "фоли": pd.NA,
+            }
+        ]
+    )
+    source = target.copy()
+    source.loc[0, "фоли_господар"] = 11
+    source.loc[0, "фоли_гість"] = 14
+    source.loc[0, "фоли"] = 25
+    xlsx = tmp_path / "prev.xlsx"
+    _write_test_xlsx(xlsx, source)
+    out, n = fm.merge_stats_from_workbook(target, xlsx)
+    assert int(out.iloc[0]["фоли_господар"]) == 9
+    assert int(out.iloc[0]["фоли_гість"]) == 14
+    assert n == 2
+
+
+def test_export_known_stats_to_inventory(tmp_path):
+    df = pd.DataFrame(
+        [
+            {
+                "ліга": "Eliteserien",
+                "дата": "16/08/2026",
+                "господар": "Elfsborg",
+                "гість": "Vasteras SK",
+                "результат": "1:3",
+                "фоли_господар": 11,
+                "фоли_гість": 14,
+                "фоли": 25,
+            }
+        ]
+    )
+    cache = tmp_path / "missing_data.json"
+    inv = fm.export_known_stats_to_inventory(df, path=cache)
+    key = fm.row_key("16/08/2026", "Elfsborg", "Vasteras SK")
+    gap = next(g for g in inv["gaps"] if g["key"] == key)
+    assert gap["filled"]["фоли"] == 25
+    assert gap["reason"] == "restored_from_excel"
+
+
 def test_merge_inventories_keeps_previous_filled_when_excel_complete():
     scanned = [
         {

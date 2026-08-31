@@ -944,6 +944,124 @@ def apply_inventory(df: pd.DataFrame, inventory: dict[str, Any]) -> pd.DataFrame
     return out
 
 
+FILLABLE_COLUMNS = [COL_RESULT, COL_BTTS, COL_BTTS_UA, COL_BTTS_UA_OLD, *STAT_COLUMNS]
+
+
+def _row_fillable_values(row: pd.Series) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for col in FILLABLE_COLUMNS:
+        if col not in row.index:
+            continue
+        val = row.get(col)
+        if not _is_blank(val):
+            out[col] = val
+    return out
+
+
+def merge_stats_from_workbook(
+    df: pd.DataFrame,
+    xlsx_path: Path | str,
+    *,
+    from_date: pd.Timestamp | None = None,
+) -> tuple[pd.DataFrame, int]:
+    """Uzupełnia puste pola w df z arkusza meczów poprzedniego Excela (po kluczu meczu)."""
+    path = Path(xlsx_path)
+    if df is None or df.empty or not path.is_file():
+        return df, 0
+    try:
+        source, _ = read_excel_mecze(path)
+    except (ValueError, OSError) as exc:
+        logger.warning("Pominieto restore z %s: %s", path.name, exc)
+        return df, 0
+    if source is None or source.empty:
+        return df, 0
+    if from_date is not None and COL_DATA in source.columns:
+        dates = pd.to_datetime(source[COL_DATA], dayfirst=True, errors="coerce")
+        source = source.loc[dates >= pd.Timestamp(from_date).normalize()].copy()
+    source = complete_row_totals(source)
+    by_key: dict[str, pd.Series] = {}
+    for _, row in source.iterrows():
+        key = row_key(row.get(COL_DATA), row.get(COL_HOME), row.get(COL_AWAY))
+        if key and key not in by_key:
+            by_key[key] = row
+    if not by_key:
+        return df, 0
+
+    out = df.copy()
+    filled_fields = 0
+    for i, row in out.iterrows():
+        src = by_key.get(row_key(row.get(COL_DATA), row.get(COL_HOME), row.get(COL_AWAY)))
+        if src is None:
+            continue
+        values = _row_fillable_values(src)
+        for col, val in values.items():
+            if col not in out.columns:
+                continue
+            if _is_blank(out.at[i, col]):
+                out.at[i, col] = val
+                filled_fields += 1
+    return complete_row_totals(out), filled_fields
+
+
+def restore_stats_from_workbooks(
+    df: pd.DataFrame,
+    paths: list[Path | str] | None,
+    *,
+    from_date: pd.Timestamp | None = None,
+) -> tuple[pd.DataFrame, int]:
+    """Scala kilka poprzednich Exceli — tylko puste komórki w df."""
+    if not paths:
+        return df, 0
+    out = df
+    total = 0
+    for raw in paths:
+        path = Path(raw)
+        if not path.is_file():
+            continue
+        out, n = merge_stats_from_workbook(out, path, from_date=from_date)
+        total += n
+    return out, total
+
+
+def export_known_stats_to_inventory(
+    df: pd.DataFrame,
+    *,
+    path: Path | None = None,
+) -> dict[str, Any]:
+    """Zapisuje w JSON wartości już obecne w DataFrame (np. po restore z Excela)."""
+    inv = load_missing_json(path or STATS_JSON)
+    gaps: dict[str, dict[str, Any]] = {
+        str(g.get("key")): dict(g) for g in (inv.get("gaps") or []) if g.get("key")
+    }
+    for _, row in df.iterrows():
+        filled = _row_fillable_values(row)
+        if not filled:
+            continue
+        key = row_key(row.get(COL_DATA), row.get(COL_HOME), row.get(COL_AWAY))
+        rec = gaps.get(key) or {
+            "key": key,
+            "league": str(row.get(COL_LIGA) or ""),
+            "date": _fmt_date(row.get(COL_DATA)),
+            "home": str(row.get(COL_HOME) or ""),
+            "away": str(row.get(COL_AWAY) or ""),
+            "result": "" if _is_blank(row.get(COL_RESULT)) else str(row.get(COL_RESULT)).strip(),
+            "pages": [],
+            "source_url": None,
+            "reason": "restored_from_excel",
+            "query": "",
+        }
+        merged = {**dict(rec.get("filled") or {}), **filled}
+        still = [c for c in FILLABLE_COLUMNS if c in row.index and _is_blank(row.get(c))]
+        rec["filled"] = merged
+        rec["missing"] = still
+        rec["status"] = "filled" if not still else "partial"
+        gaps[key] = rec
+    inv["gaps"] = list(gaps.values())
+    inv["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    save_missing_json(inv, path or STATS_JSON)
+    return inv
+
+
 def fill_stats(
     df: pd.DataFrame,
     *,

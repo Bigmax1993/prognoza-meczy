@@ -126,7 +126,7 @@ Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (
 
 | Workflow | Kiedy | Co |
 |----------|--------|-----|
-| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` (Excel, 7 dni). Limit czasu joba: **4 h** (`timeout-minutes: 240`). |
+| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | ściąga poprzednie artefakty Excel → `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` (7 dni). Limit czasu joba: **4 h**. |
 | [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **03:00** (zimą **02:00**) | ściąga artifact z ostatniego udanego pipeline i wysyła mail |
 | [Testy](.github/workflows/test.yml) | push na `main` (też ręcznie) | `pytest tests` |
 
@@ -135,6 +135,8 @@ Najpierw odpal pipeline, potem wysyłkę — mail bez niedzielnego artifactu si�
 Duży `--fill-missing` (wiele luk w JSON) może trwać **ponad godzinę** — stąd 4-godzinny limit w pipeline.
 
 W checkoutcie jest już `predykcje_2026.xlsx`. `gh run download` **nie nadpisuje** plików (`file exists`), więc wysyłka ściąga artifact do pustego `artifacts/`, a potem kopiuje go na `predykcje_2026.xlsx`. Mail idzie z Excela z niedzielnego pipeline, nie z gita.
+
+Pipeline przed uruchomieniem pobiera do `artifacts/` poprzednie pliki `predykcje_2026.xlsx` z udanych runów i **uzupełnia puste statystyki** (faule, rożne, kartki itd.) zanim odpali Serper/Claude — dzięki temu mecze starsze niż 7 dni nie tracą danych z poprzedniego tygodnia.
 
 ---
 

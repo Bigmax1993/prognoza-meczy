@@ -1526,6 +1526,47 @@ def export_excel(
     return out_path
 
 
+def _default_restore_excel_paths() -> list[Path]:
+    """Poprzednie artefakty Actions + Excel z repo (tylko uzupełnia puste komórki)."""
+    paths: list[Path] = []
+    artifacts = ROOT / "artifacts"
+    prev = artifacts / "previous_predykcje_2026.xlsx"
+    if prev.is_file():
+        paths.append(prev)
+    if artifacts.is_dir():
+        paths.extend(sorted(artifacts.glob("predykcje_prev_*.xlsx"), reverse=True))
+    if OUT_XLSX.is_file():
+        paths.append(OUT_XLSX)
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for p in paths:
+        rp = p.resolve()
+        if rp not in seen:
+            seen.add(rp)
+            out.append(p)
+    return out
+
+
+def _restore_stats_from_previous_excels(
+    df_2026: pd.DataFrame,
+    df_history: pd.DataFrame,
+    *,
+    restore_paths: list[Path] | None,
+) -> tuple[pd.DataFrame, pd.DataFrame, int]:
+    import fill_missing as fill
+
+    paths = restore_paths if restore_paths is not None else _default_restore_excel_paths()
+    if not paths:
+        return df_2026, df_history, 0
+    df_2026, n = fill.restore_stats_from_workbooks(df_2026, paths)
+    df_history, n_hist = fill.restore_stats_from_workbooks(df_history, paths)
+    n += n_hist
+    if n > 0:
+        fill.export_known_stats_to_inventory(df_2026)
+        fill.export_known_stats_to_inventory(df_history)
+    return df_2026, df_history, n
+
+
 def _fill_played_from_json_and_api(
     df_2026: pd.DataFrame,
     df_history: pd.DataFrame,
@@ -1533,10 +1574,19 @@ def _fill_played_from_json_and_api(
     *,
     fill_from: pd.Timestamp,
     require_complete: bool,
+    restore_paths: list[Path] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Zawsze: skan braków → JSON → API (gdy są klucze). Tylko mecze od fill_from."""
     import fill_missing as fill
     import upcoming as up
+
+    df_2026, df_history, restored = _restore_stats_from_previous_excels(
+        df_2026,
+        df_history,
+        restore_paths=restore_paths,
+    )
+    if restored:
+        _safe_print(f"Restore z poprzednich Exceli: uzupelniono {restored} pol")
 
     if require_complete and not fill.has_keys():
         raise SystemExit(
@@ -1644,6 +1694,13 @@ def main(argv: list[str] | None = None) -> None:
         help="Ile dni wstecz uzupelniac braki statystyk (Serper/Claude), domyslnie 7",
     )
     parser.add_argument(
+        "--restore-excel",
+        nargs="*",
+        default=None,
+        metavar="XLSX",
+        help="Poprzednie predykcje_2026.xlsx (artifact) — uzupelnia puste statystyki przed JSON/API",
+    )
+    parser.add_argument(
         "--send-mail",
         action="store_true",
         help="Wyslij predykcje_2026.xlsx na MAIL_TO (Gmail SMTP)",
@@ -1700,12 +1757,14 @@ def main(argv: list[str] | None = None) -> None:
         f"Uzupelnianie statystyk (JSON/Serper/Claude): ostatnie {args.fill_days} dni "
         f"(od {fill_cutoff.strftime('%d/%m/%Y')})"
     )
+    restore_paths = [Path(p) for p in args.restore_excel] if args.restore_excel is not None else None
     df_2026, df_history, df_year = _fill_played_from_json_and_api(
         df_2026,
         df_history,
         df_year,
         fill_from=fill_cutoff,
         require_complete=True,
+        restore_paths=restore_paths,
     )
 
     team_avg = compute_team_averages(df_history)
