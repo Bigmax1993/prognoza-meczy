@@ -1,10 +1,10 @@
-# Poniedziałek 05:00 czasu polskiego (CEST = UTC+2). Zimą (CET) będzie 04:00.
+# Poniedziałek 03:00 czasu polskiego (CEST = UTC+2). Zimą (CET) będzie 02:00.
 # GitHub Actions cron jest zawsze w UTC.
 name: Wysyłka Gmail poniedziałek
 
 on:
   schedule:
-    - cron: "0 3 * * 1"
+    - cron: "0 1 * * 1"
   workflow_dispatch:
 
 permissions:
