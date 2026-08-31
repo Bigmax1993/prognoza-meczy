@@ -126,12 +126,13 @@ Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (
 
 | Workflow | Kiedy | Co |
 |----------|--------|-----|
-| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` (Excel, 7 dni) |
-| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **05:00** | ściąga artifact z ostatniego udanego pipeline i wysyła mail |
+| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | `python predykcje.py --fill-missing` + artifact `predykcje-xlsx` (Excel, 7 dni). Limit czasu joba: **4 h** (`timeout-minutes: 240`). |
+| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **03:00** (zimą **02:00**) | ściąga artifact z ostatniego udanego pipeline i wysyła mail |
 | [Testy](.github/workflows/test.yml) | push na `main` (też ręcznie) | `pytest tests` |
 
 Ręcznie: **Actions** → wybrany workflow → **Run workflow**.  
-Najpierw odpal pipeline, potem wysyłkę — mail bez niedzielnego artifactu się wywali.
+Najpierw odpal pipeline, potem wysyłkę — mail bez niedzielnego artifactu się wywali.  
+Duży `--fill-missing` (wiele luk w JSON) może trwać **ponad godzinę** — stąd 4-godzinny limit w pipeline.
 
 W checkoutcie jest już `predykcje_2026.xlsx`. `gh run download` **nie nadpisuje** plików (`file exists`), więc wysyłka ściąga artifact do pustego `artifacts/`, a potem kopiuje go na `predykcje_2026.xlsx`. Mail idzie z Excela z niedzielnego pipeline, nie z gita.
 
@@ -186,4 +187,4 @@ Na GitHubie to samo robi workflow [Testy](.github/workflows/test.yml) przy pushu
 - Cloudflare na FootyStats może blokować scraper.
 - Nie tłumacz nazw klubów (Arsenal, Sarpsborg 08, Elfsborg…).
 
-Typowy przebieg tygodnia: niedziela pipeline → poniedziałek mail z `predykcje_2026.xlsx`.
+Typowy przebieg tygodnia: niedziela 20:00 pipeline (do 4 h) → poniedziałek 03:00 mail z `predykcje_2026.xlsx`.
