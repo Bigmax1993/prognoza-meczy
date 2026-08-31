@@ -14,7 +14,7 @@ permissions:
 jobs:
   predykcje:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 240
     env:
       PYTHONIOENCODING: utf-8
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
