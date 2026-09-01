@@ -417,11 +417,17 @@ def test_export_excel_creates_sheets(form_history, tmp_path):
     future_xl = pd.read_excel(out, sheet_name="Майбутні_матчі")
     assert list(future_xl.columns)[:4] == ["ліга", "дата", "господар", "гість"]
     preds_xl = pd.read_excel(out, sheet_name="Прогнози")
-    assert "статус" in preds_xl.columns
+    assert "статус" not in preds_xl.columns
+    assert "причина" not in preds_xl.columns
+    assert "метод" not in preds_xl.columns
+    assert "прогноз голів" not in preds_xl.columns
+    assert "лінія_кутові" not in preds_xl.columns
+    assert "лінія_жовті" not in preds_xl.columns
+    assert "прогноз_кутові" not in preds_xl.columns
+    assert not any(c.startswith("середн_") for c in preds_xl.columns)
     assert "прогноз_переможець" in preds_xl.columns
     assert "результат" not in preds_xl.columns
     assert "результат" in mecze.columns
-    assert set(preds_xl["статус"].astype(str)).issubset({"ок", "пропуск"})
 
 
 def test_export_excel_future_sheet_calendar_only(form_history, tmp_path):

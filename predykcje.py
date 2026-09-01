@@ -73,6 +73,18 @@ SHEET_MECZE = "Матчі_2026"
 SHEET_FUTURE = "Майбутні_матчі"
 SHEET_PRED = "Прогнози"
 FUTURE_COLS = [COL_LIGA, COL_DATA, COL_HOME, COL_AWAY]
+# Kolumny tylko do obliczeń / pivotów — nie trafiają do arkusza Прогнози w Excelu.
+PRED_SHEET_DROP_COLS = frozenset(
+    {
+        "status",
+        "powod",
+        "przewidywane_btts",
+        "linia_rozne",
+        "linia_zolte",
+        "predykcja_rozne",
+        "metoda",
+    }
+)
 
 LEAGUE_UA = {
     "Premier League": "Прем'єр-ліга",
@@ -1117,6 +1129,20 @@ def _excel_value(v: Any) -> Any:
     return v
 
 
+def _pred_sheet_export(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Arkusz Прогнози — bez statusu, linii O/U, średnich i kolumn technicznych."""
+    if predictions.empty:
+        return predictions
+    keep = [
+        c
+        for c in predictions.columns
+        if c not in PRED_SHEET_DROP_COLS
+        and c != COL_RESULT
+        and not str(c).startswith("srednia_")
+    ]
+    return predictions[keep].copy()
+
+
 def _scored_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
     if predictions.empty:
         return predictions
@@ -1508,8 +1534,7 @@ def export_excel(
     df_raw[COL_DATA] = pd.to_datetime(df_raw[COL_DATA], dayfirst=True).dt.strftime("%d/%m/%Y")
     played, future = split_played_and_future(df_raw, as_of=as_of)
     future = future.reindex(columns=FUTURE_COLS)
-    preds_out = predictions.drop(columns=[COL_RESULT], errors="ignore")
-    preds_ua = ukrainize_for_excel(preds_out, fill_blank="—")
+    preds_ua = ukrainize_for_excel(_pred_sheet_export(predictions), fill_blank="—")
 
     _write_df_sheet(wb, SHEET_MECZE, played, table_names=table_names)
     _write_df_sheet(wb, SHEET_FUTURE, future, table_names=table_names)
