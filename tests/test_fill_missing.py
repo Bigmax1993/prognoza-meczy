@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pandas as pd
 
 import fill_missing as fm
@@ -715,3 +717,55 @@ def test_merge_inventories_reuses_json_fill_on_new_scan():
     assert merged[0]["missing"] == []
     assert merged[0]["filled"]["фоли_господар"] == 13
     assert merged[0]["pages"][0]["url"] == "https://example.com"
+
+
+def test_fill_stats_stops_on_deadline(tmp_path):
+    df = pd.DataFrame(
+        [
+            {
+                fm.COL_LIGA: "Allsvenskan",
+                fm.COL_DATA: "16/08/2026",
+                fm.COL_HOME: "Djurgarden",
+                fm.COL_AWAY: "AIK",
+                fm.COL_RESULT: "1:3",
+                "кутові_господар": pd.NA,
+                "кутові_гість": pd.NA,
+                "кутові": pd.NA,
+            },
+            {
+                fm.COL_LIGA: "Allsvenskan",
+                fm.COL_DATA: "17/08/2026",
+                fm.COL_HOME: "Elfsborg",
+                fm.COL_AWAY: "Malmo",
+                fm.COL_RESULT: "2:1",
+                "кутові_господар": pd.NA,
+                "кутові_гість": pd.NA,
+                "кутові": pd.NA,
+            },
+        ]
+    )
+    calls = {"n": 0}
+
+    def search_fn(query: str):
+        return [{"title": query, "link": f"https://example.com/{calls['n']}", "snippet": ""}]
+
+    def fetch_fn(url: str):
+        return "page"
+
+    def decide_fn(**kwargs):
+        calls["n"] += 1
+        return {"match": True, "corners_home": 4, "corners_away": 2}
+
+    filled, inv = fm.fill_stats(
+        df,
+        as_of=pd.Timestamp("2026-08-18"),
+        search_fn=search_fn,
+        fetch_fn=fetch_fn,
+        decide_fn=decide_fn,
+        cache_path=tmp_path / "missing_data.json",
+        live=True,
+        deadline=time.monotonic() - 1,
+    )
+    assert inv["budget_exhausted"] is True
+    assert calls["n"] == 0
+    assert int(fm.audit_missing(filled, as_of=pd.Timestamp("2026-08-18"))["fields"]) > 0

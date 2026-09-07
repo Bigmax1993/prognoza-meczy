@@ -20,6 +20,7 @@ import logging
 import math
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -1600,6 +1601,7 @@ def _fill_played_from_json_and_api(
     fill_from: pd.Timestamp,
     require_complete: bool,
     restore_paths: list[Path] | None = None,
+    deadline: float | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Zawsze: skan braków → JSON → API (gdy są klucze). Tylko mecze od fill_from."""
     import fill_missing as fill
@@ -1622,7 +1624,11 @@ def _fill_played_from_json_and_api(
         _safe_print("Braki: zapisuje JSON bez API (brak SERPER_API_KEY / ANTHROPIC_API_KEY)")
     try:
         df_2026, inv = fill.verify_and_fill(
-            df_2026, live=live, max_rounds=3, from_date=fill_from
+            df_2026,
+            live=live,
+            max_rounds=3,
+            from_date=fill_from,
+            deadline=deadline,
         )
     except fill.ClaudeAuthError as exc:
         logger.warning("%s", exc)
@@ -1643,6 +1649,7 @@ def _fill_played_from_json_and_api(
             f"Weryfikacja: rundy={v.get('rounds', 0)} "
             f"zostalo_meczow={v.get('remaining_matches', 0)} "
             f"zostalo_pol={v.get('remaining_fields', 0)}"
+            + (" [budget]" if v.get("budget_exhausted") else "")
         )
     if inv:
         df_history = fill.apply_inventory(df_history, inv)
@@ -1656,6 +1663,7 @@ def _verify_exported_stats(
     *,
     fill_from: pd.Timestamp,
     require_complete: bool,
+    deadline: float | None = None,
 ) -> tuple[pd.DataFrame | None, pd.DataFrame | None, bool]:
     """Po zapisie Excela: puste komórki → JSON ponownie → API na resztę (tylko od fill_from)."""
     import fill_missing as fill
@@ -1666,6 +1674,7 @@ def _verify_exported_stats(
             path,
             live=live,
             from_date=fill_from,
+            deadline=deadline,
         )
     except fill.ClaudeAuthError as exc:
         logger.warning("%s", exc)
@@ -1675,6 +1684,7 @@ def _verify_exported_stats(
         f"Weryfikacja Excela: puste {vrep['empty_before']['fields']} pol → "
         f"z JSON {vrep['filled_from_json']}, z API {vrep['filled_from_api']}, "
         f"zostalo {vrep['empty_after']['fields']}"
+        + (" [budget]" if vrep.get("budget_exhausted") else "")
     )
     if vrep.get("remaining"):
         _safe_print("Nadal puste (brak w JSON i na stronach):")
@@ -1719,6 +1729,17 @@ def main(argv: list[str] | None = None) -> None:
         help="Ile dni wstecz uzupelniac braki statystyk (Serper/Claude), domyslnie 7",
     )
     parser.add_argument(
+        "--fill-budget-minutes",
+        type=int,
+        default=0,
+        help="Miekki limit czasu uzupelniania (min) — zapisuje postep i konczy zanim GitHub ubije job",
+    )
+    parser.add_argument(
+        "--allow-incomplete",
+        action="store_true",
+        help="Nie wymagaj pustego zestawu braków (używane w części 1 pipeline)",
+    )
+    parser.add_argument(
         "--restore-excel",
         nargs="*",
         default=None,
@@ -1733,6 +1754,13 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    deadline: float | None = None
+    if args.fill_budget_minutes and args.fill_budget_minutes > 0:
+        deadline = time.monotonic() + args.fill_budget_minutes * 60
+        _safe_print(f"Fill budget: {args.fill_budget_minutes} min")
+
+    require_complete = not args.allow_incomplete
 
     df_year, df_history = load_2026_data()
     n_year = len(df_year)
@@ -1788,8 +1816,9 @@ def main(argv: list[str] | None = None) -> None:
         df_history,
         df_year,
         fill_from=fill_cutoff,
-        require_complete=True,
+        require_complete=require_complete,
         restore_paths=restore_paths,
+        deadline=deadline,
     )
 
     team_avg = compute_team_averages(df_history)
@@ -1824,7 +1853,8 @@ def main(argv: list[str] | None = None) -> None:
     mecze_x, preds_x, changed = _verify_exported_stats(
         path,
         fill_from=fill_cutoff,
-        require_complete=True,
+        require_complete=require_complete,
+        deadline=deadline,
     )
     if changed and mecze_x is not None:
         df_2026 = mecze_x

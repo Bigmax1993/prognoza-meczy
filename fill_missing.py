@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -1073,8 +1074,13 @@ def fill_stats(
     cache_path: Path | None = None,
     live: bool = True,
     search_round: int = 0,
+    deadline: float | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """JSON braków → Serper/Claude (opcjonalnie) → walidacja → DataFrame."""
+    """JSON braków → Serper/Claude (opcjonalnie) → walidacja → DataFrame.
+
+    `deadline` to absolutny czas `time.monotonic()` — po jego przekroczeniu
+    zapisuje postęp w JSON i kończy bez ubijania procesu przez GitHub.
+    """
     path = cache_path or STATS_JSON
     inventory = build_inventory(df, as_of=as_of, from_date=from_date, path=path)
     if not live:
@@ -1086,7 +1092,12 @@ def fill_stats(
         lambda **kw: claude_decide_stats(gap=kw["gap"], url=kw["url"], page_text=kw["page_text"])
     )
 
+    budget_exhausted = False
     for gap in inventory["gaps"]:
+        if deadline is not None and time.monotonic() >= deadline:
+            budget_exhausted = True
+            logger.warning("Fill budget exhausted — zapisuję postęp i kończę rundę")
+            break
         if not gap.get("missing"):
             continue
         extra = _complete_totals({}, gap.get("filled") or {}, set(gap["missing"]))
@@ -1126,6 +1137,9 @@ def fill_stats(
             save_missing_json(inventory, path)
             continue
         for hit in hits:
+            if deadline is not None and time.monotonic() >= deadline:
+                budget_exhausted = True
+                break
             url = hit.get("link") or ""
             page_info = {"url": url, "title": hit.get("title"), "accepted": False}
             try:
@@ -1166,8 +1180,11 @@ def fill_stats(
         if gap["filled"] and gap["missing"]:
             gap["status"] = "partial"
         save_missing_json(inventory, path)
+        if budget_exhausted:
+            break
 
     inventory["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    inventory["budget_exhausted"] = budget_exhausted
     inventory["summary"] = inventory_summary(
         inventory["gaps"],
         rows=len(df),
@@ -1230,6 +1247,7 @@ def verify_and_fill(
     cache_path: Path | None = None,
     live: bool = True,
     max_rounds: int = 3,
+    deadline: float | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Weryfikuje braki i dociąga je w rundach, aż nie ma postępu."""
     path = cache_path or STATS_JSON
@@ -1239,7 +1257,11 @@ def verify_and_fill(
     out = complete_row_totals(out)
     last_fields: int | None = None
     used_rounds = 0
+    budget_exhausted = False
     for rnd in range(max(1, max_rounds)):
+        if deadline is not None and time.monotonic() >= deadline:
+            budget_exhausted = True
+            break
         audit = audit_missing(out, as_of=as_of, from_date=from_date)
         n = int(audit["fields"])
         if n == 0:
@@ -1260,20 +1282,26 @@ def verify_and_fill(
             cache_path=path,
             live=live,
             search_round=rnd,
+            deadline=deadline,
         )
         out = complete_row_totals(out)
+        if inventory.get("budget_exhausted"):
+            budget_exhausted = True
+            break
         if not live:
             break
     out = complete_row_totals(out)
     audit = audit_missing(out, as_of=as_of, from_date=from_date)
     if not inventory:
         inventory = build_inventory(out, as_of=as_of, from_date=from_date, path=path)
+    inventory["budget_exhausted"] = bool(inventory.get("budget_exhausted") or budget_exhausted)
     inventory["verification"] = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "rounds": used_rounds,
         "remaining_matches": audit["matches"],
         "remaining_fields": audit["fields"],
         "remaining": audit["gaps"],
+        "budget_exhausted": inventory["budget_exhausted"],
     }
     save_missing_json(inventory, path)
     return out, inventory
@@ -1307,6 +1335,7 @@ def verify_exported_workbook(
     decide_fn: Callable[..., dict[str, Any]] | None = None,
     live: bool = True,
     max_rounds: int = 2,
+    deadline: float | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Po pipeline: Excel → puste komórki → JSON, a gdy JSON też pusty → Serper/Claude.
 
@@ -1326,6 +1355,7 @@ def verify_exported_workbook(
         "filled_from_api": 0,
         "empty_after": {"matches": before["matches"], "fields": before["fields"]},
         "remaining": before["gaps"],
+        "budget_exhausted": False,
     }
     if before["fields"] == 0:
         return mecze, preds, report
@@ -1348,10 +1378,12 @@ def verify_exported_workbook(
             cache_path=cache,
             live=True,
             max_rounds=max_rounds,
+            deadline=deadline,
         )
         mecze = complete_row_totals(mecze)
         after = audit_missing(mecze, as_of=as_of, from_date=from_date)
         report["filled_from_api"] = int(after_json["fields"] - after["fields"])
+        report["budget_exhausted"] = bool(inv.get("budget_exhausted"))
 
     report["empty_after"] = {"matches": after["matches"], "fields": after["fields"]}
     report["remaining"] = after["gaps"]
