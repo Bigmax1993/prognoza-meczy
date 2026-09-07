@@ -744,15 +744,28 @@ def scan_missing(
     return gaps
 
 
+def _gap_on_or_after(gap: dict[str, Any], from_date: pd.Timestamp | None) -> bool:
+    if from_date is None:
+        return True
+    d = pd.to_datetime(gap.get("date"), dayfirst=True, errors="coerce")
+    if pd.isna(d):
+        return False
+    return pd.Timestamp(d).normalize() >= pd.Timestamp(from_date).normalize()
+
+
 def _merge_inventories(
     scanned: list[dict[str, Any]],
     previous: dict[str, Any] | None,
+    *,
+    from_date: pd.Timestamp | None = None,
 ) -> list[dict[str, Any]]:
-    """Scala nowy skan z JSON: nowe braki + stare wypełnienia (nawet gdy Excel jest kompletny)."""
+    """Scala nowy skan z JSON: nowe braki + stare wypełnienia (tylko od from_date)."""
     old_by_key = {g.get("key"): g for g in (previous or {}).get("gaps") or [] if g.get("key")}
     merged: list[dict[str, Any]] = []
     seen: set[str] = set()
     for gap in scanned:
+        if not _gap_on_or_after(gap, from_date):
+            continue
         key = gap["key"]
         seen.add(key)
         prev = old_by_key.get(key)
@@ -763,6 +776,7 @@ def _merge_inventories(
         keep["pages"] = list(prev.get("pages") or [])
         keep["source_url"] = prev.get("source_url")
         keep["reason"] = prev.get("reason")
+        keep["bbc_live_url"] = prev.get("bbc_live_url") or gap.get("bbc_live_url")
         filled = dict(prev.get("filled") or {})
         still = [c for c in gap["missing"] if c not in filled]
         keep["filled"] = filled
@@ -773,8 +787,11 @@ def _merge_inventories(
             keep["status"] = "filled"
         merged.append(keep)
     for key, prev in old_by_key.items():
-        if key not in seen:
-            merged.append(prev)
+        if key in seen:
+            continue
+        if not _gap_on_or_after(prev, from_date):
+            continue
+        merged.append(prev)
     return merged
 
 
@@ -797,16 +814,17 @@ def build_inventory(
     from_date: pd.Timestamp | None = None,
     path: Path | None = None,
 ) -> dict[str, Any]:
-    """Najpierw JSON: skanuje braki, scala z poprzednim plikiem, zapisuje."""
+    """Najpierw JSON: skanuje braki, scala z poprzednim plikiem, zapisuje (tylko od from_date)."""
     cut = (as_of or pd.Timestamp.now()).normalize()
     dates = pd.to_datetime(df[COL_DATA], dayfirst=True, errors="coerce") if not df.empty else pd.Series(dtype="datetime64[ns]")
     future = int(((dates.dt.normalize() >= cut) & df[COL_RESULT].map(_is_blank)).sum()) if not df.empty else 0
     scanned = scan_missing(df, as_of=cut, from_date=from_date)
     prev = load_missing_json(path or STATS_JSON)
-    gaps = _merge_inventories(scanned, prev)
+    gaps = _merge_inventories(scanned, prev, from_date=from_date)
     report = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "as_of": cut.strftime("%d/%m/%Y"),
+        "from_date": pd.Timestamp(from_date).strftime("%d/%m/%Y") if from_date is not None else None,
         "summary": inventory_summary(gaps, rows=len(df), future_skipped=future),
         "gaps": gaps,
     }

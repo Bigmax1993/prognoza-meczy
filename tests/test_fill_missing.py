@@ -862,3 +862,30 @@ def test_fill_stats_stops_on_deadline(tmp_path):
     assert inv["budget_exhausted"] is True
     assert calls["n"] == 0
     assert int(fm.audit_missing(filled, as_of=pd.Timestamp("2026-08-18"))["fields"]) > 0
+
+
+def test_merge_inventories_drops_gaps_before_from_date():
+    scanned = [
+        {
+            "key": "2026-08-14|a|b",
+            "date": "14/08/2026",
+            "missing": ["фоли"],
+            "filled": {},
+            "status": "pending",
+        }
+    ]
+    previous = {
+        "gaps": [
+            {
+                "key": "2025-05-01|old|team",
+                "date": "01/05/2025",
+                "missing": ["фоли"],
+                "filled": {},
+                "status": "partial",
+            }
+        ]
+    }
+    merged = fm._merge_inventories(
+        scanned, previous, from_date=pd.Timestamp("2026-08-13")
+    )
+    assert [g["key"] for g in merged] == ["2026-08-14|a|b"]

@@ -1729,7 +1729,7 @@ def main(argv: list[str] | None = None) -> None:
         "--fill-days",
         type=int,
         default=7,
-        help="Ile dni wstecz uzupelniac braki statystyk (Serper/Claude), domyslnie 7",
+        help="Zachowane dla kompatybilnosci CI; fill i JSON uzywaja --od (domyslnie 13/08/2026)",
     )
     parser.add_argument(
         "--fill-budget-minutes",
@@ -1808,17 +1808,18 @@ def main(argv: list[str] | None = None) -> None:
             f"Brak meczow od {args.od.strftime('%d/%m/%Y')} — nie mozna wygenerowac predykcji."
         )
 
-    fill_cutoff = fill_from_date(fill_days=args.fill_days)
+    # Fill/JSON: wyłącznie mecze od --od (domyślnie 13/08/2026) → Excel.
+    fill_from = pd.Timestamp(args.od).normalize()
     _safe_print(
-        f"Uzupelnianie statystyk (JSON/Serper/Claude): ostatnie {args.fill_days} dni "
-        f"(od {fill_cutoff.strftime('%d/%m/%Y')})"
+        f"Uzupelnianie statystyk (BBC/JSON/Serper/Claude): od {fill_from.strftime('%d/%m/%Y')} "
+        f"(ten sam zakres co Excel --od)"
     )
     restore_paths = [Path(p) for p in args.restore_excel] if args.restore_excel is not None else None
     df_2026, df_history, df_year = _fill_played_from_json_and_api(
         df_2026,
         df_history,
         df_year,
-        fill_from=fill_cutoff,
+        fill_from=fill_from,
         require_complete=require_complete,
         restore_paths=restore_paths,
         deadline=deadline,
@@ -1855,7 +1856,7 @@ def main(argv: list[str] | None = None) -> None:
 
     mecze_x, preds_x, changed = _verify_exported_stats(
         path,
-        fill_from=fill_cutoff,
+        fill_from=fill_from,
         require_complete=require_complete,
         deadline=deadline,
     )
