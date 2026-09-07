@@ -1,9 +1,9 @@
 # Niedziela 20:00 czasu polskiego (CEST = UTC+2). Zimą (CET) będzie 21:00.
 # GitHub Actions cron jest zawsze w UTC.
 #
-# Dwa joby po max 4 h — fill Serper/Claude kończy się miękko przed limitem
-# (--fill-budget-minutes), a część 2 kontynuuje z artifactu części 1.
-name: Pipeline niedziela
+# Część 1 (discovery): soft-stop przed limitem 4 h → artifact predykcje-partial.
+# Część 2 (pipeline-czesc2.yml) startuje w poniedziałek 01:00 i dokańcza fill.
+name: Pipeline niedziela discovery
 
 on:
   schedule:
@@ -20,8 +20,8 @@ env:
   FILL_BUDGET_MINUTES: "210"
 
 jobs:
-  czesc1:
-    name: Część 1 — build + fill
+  discovery:
+    name: Część 1 — discovery + fill
     runs-on: ubuntu-latest
     timeout-minutes: 240
     env:
@@ -48,7 +48,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
           CURRENT="${{ github.run_id }}"
-          for RUN_ID in $(gh run list --workflow=pipeline.yml --status=success --limit 6 --json databaseId --jq '.[].databaseId'); do
+          for RUN_ID in $(gh run list --workflow=pipeline-czesc2.yml --status=success --limit 6 --json databaseId --jq '.[].databaseId'); do
             if [ "$RUN_ID" = "$CURRENT" ]; then
               continue
             fi
@@ -63,7 +63,7 @@ jobs:
             fi
           done
           ls -la artifacts || true
-      - name: Uruchom pipeline (część 1)
+      - name: Uruchom discovery (część 1)
         run: |
           python predykcje.py --fill-missing \
             --fill-budget-minutes "${FILL_BUDGET_MINUTES}" \
@@ -77,60 +77,3 @@ jobs:
             cache/missing_data.json
           if-no-files-found: error
           retention-days: 3
-
-  czesc2:
-    name: Część 2 — dokończ fill
-    needs: czesc1
-    runs-on: ubuntu-latest
-    timeout-minutes: 240
-    env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: cache/missing_data.json
-          key: missing-data-${{ github.run_id }}-2
-          restore-keys: |
-            missing-data-${{ github.run_id }}-
-            missing-data-
-      - uses: actions/download-artifact@v4
-        with:
-          name: predykcje-partial
-          path: partial
-      - name: Przygotuj Excel i JSON z części 1
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts cache
-          cp partial/predykcje_2026.xlsx artifacts/previous_predykcje_2026.xlsx
-          # gh / pipeline nie nadpisują istniejącego xlsx z checkoutu
-          rm -f predykcje_2026.xlsx
-          cp partial/predykcje_2026.xlsx predykcje_2026.xlsx
-          # JSON z części 1 ma pierwszeństwo nad cache z poprzednich runów
-          if [ -f partial/cache/missing_data.json ]; then
-            cp partial/cache/missing_data.json cache/missing_data.json
-          elif [ -f partial/missing_data.json ]; then
-            cp partial/missing_data.json cache/missing_data.json
-          fi
-          ls -la artifacts cache
-          test -f cache/missing_data.json
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-          cache: pip
-      - name: Zależności
-        run: pip install -r requirements.txt
-      - name: Uruchom pipeline (część 2)
-        run: |
-          python predykcje.py --fill-missing \
-            --fill-budget-minutes "${FILL_BUDGET_MINUTES}" \
-            --restore-excel artifacts/previous_predykcje_2026.xlsx
-      - name: Artifact Excel
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: predykcje-xlsx
-          path: predykcje_2026.xlsx
-          if-no-files-found: error
-          retention-days: 7

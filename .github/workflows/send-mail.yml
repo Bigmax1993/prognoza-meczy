@@ -1,10 +1,10 @@
-# Poniedziałek 03:00 czasu polskiego (CEST = UTC+2). Zimą (CET) będzie 02:00.
+# Poniedziałek 05:00 czasu polskiego (CEST = UTC+2). Zimą (CET) będzie 06:00.
 # GitHub Actions cron jest zawsze w UTC.
 name: Wysyłka Gmail poniedziałek
 
 on:
   schedule:
-    - cron: "0 1 * * 1"
+    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -23,15 +23,15 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - name: Pobierz Excel z niedzielnego pipeline
+      - name: Pobierz Excel z poniedziałkowego fill
         run: |
           set -euo pipefail
-          RUN_ID=$(gh run list --workflow=pipeline.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId')
+          RUN_ID=$(gh run list --workflow=pipeline-czesc2.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId')
           if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
-            echo "Brak udanego runu pipeline.yml"
+            echo "Brak udanego runu pipeline-czesc2.yml"
             exit 1
           fi
-          echo "pipeline run_id=$RUN_ID"
+          echo "fill run_id=$RUN_ID"
           # predykcje_2026.xlsx jest w repo — gh run download nie nadpisuje (file exists).
           rm -f predykcje_2026.xlsx
           mkdir -p artifacts

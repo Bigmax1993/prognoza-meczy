@@ -112,7 +112,7 @@ Przy 401 Anthropic pipeline **się zatrzymuje** (bez spamu requestów).
 
 Wysyłka: SMTP `smtp.gmail.com` + załącznik `predykcje_2026.xlsx`.  
 Kopia ląduje w **Wysłanych** nadawcy (IMAP, folder Wysłane / Sent Mail).  
-Na GitHub Actions załącznik to artifact z ostatniego udanego **Pipeline niedziela**, nie Excel z checkoutu gita.
+Na GitHub Actions załącznik to artifact z ostatniego udanego **Pipeline poniedziałek fill**, nie Excel z checkoutu gita.
 
 Włącz IMAP: Gmail → Ustawienia → Przekazywanie i POP/IMAP → **Włącz IMAP**.
 
@@ -126,17 +126,17 @@ Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (
 
 | Workflow | Kiedy | Co |
 |----------|--------|-----|
-| [Pipeline niedziela](.github/workflows/pipeline.yml) | niedziela **20:00** | **2 joby** po max **4 h**: część 1 (`--fill-budget-minutes 210 --allow-incomplete`) → artifact partial; część 2 kontynuuje fill z JSON/Excela i publikuje `predykcje-xlsx`. |
-| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **03:00** (zimą **02:00**) | ściąga artifact z ostatniego udanego pipeline i wysyła mail |
+| [Pipeline niedziela discovery](.github/workflows/pipeline.yml) | niedziela **20:00** | część 1: build + Serper/Claude z budżetem 210 min (`--allow-incomplete`) → artifact `predykcje-partial` (max **4 h**) |
+| [Pipeline poniedziałek fill](.github/workflows/pipeline-czesc2.yml) | poniedziałek **01:00** | część 2: kontynuuje z partial → finalny artifact `predykcje-xlsx` (max **4 h**) |
+| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **05:00** (zimą **06:00**) | ściąga `predykcje-xlsx` z fill i wysyła mail |
 | [Testy](.github/workflows/test.yml) | push na `main` (też ręcznie) | `pytest tests` |
 
-Ręcznie: **Actions** → wybrany workflow → **Run workflow**.  
-Najpierw odpal pipeline, potem wysyłkę — mail bez niedzielnego artifactu się wywali.  
-Duży `--fill-missing` (wiele luk w JSON) może trwać **wiele godzin** — stąd dwa joby po 4 h i miękki budżet fill (`--fill-budget-minutes`), żeby GitHub nie ubijał joba w środku API.
+Ręcznie: **Actions** → discovery → potem fill → potem wysyłka.  
+Duży `--fill-missing` może trwać **wiele godzin** — stąd dwa osobne runy po 4 h i miękki budżet (`--fill-budget-minutes`), żeby GitHub nie ubijał joba w środku API.
 
-W checkoutcie jest już `predykcje_2026.xlsx`. `gh run download` **nie nadpisuje** plików (`file exists`), więc wysyłka ściąga artifact do pustego `artifacts/`, a potem kopiuje go na `predykcje_2026.xlsx`. Mail idzie z Excela z niedzielnego pipeline, nie z gita.
+W checkoutcie jest już `predykcje_2026.xlsx`. `gh run download` **nie nadpisuje** plików (`file exists`), więc wysyłka ściąga artifact do pustego `artifacts/`, a potem kopiuje go na `predykcje_2026.xlsx`. Mail idzie z Excela z poniedziałkowego fill, nie z gita.
 
-Pipeline przed uruchomieniem pobiera do `artifacts/` poprzednie pliki `predykcje_2026.xlsx` z udanych runów i **uzupełnia puste statystyki** (faule, rożne, kartki itd.) zanim odpali Serper/Claude — dzięki temu mecze starsze niż 7 dni nie tracą danych z poprzedniego tygodnia.
+Discovery przed uruchomieniem pobiera do `artifacts/` poprzednie pliki `predykcje_2026.xlsx` z udanych fillów i **uzupełnia puste statystyki** (faule, rożne, kartki itd.) zanim odpali Serper/Claude — dzięki temu mecze starsze niż 7 dni nie tracą danych z poprzedniego tygodnia.
 
 ---
 
@@ -189,4 +189,4 @@ Na GitHubie to samo robi workflow [Testy](.github/workflows/test.yml) przy pushu
 - Cloudflare na FootyStats może blokować scraper.
 - Nie tłumacz nazw klubów (Arsenal, Sarpsborg 08, Elfsborg…).
 
-Typowy przebieg tygodnia: niedziela 20:00 pipeline (do 4 h) → poniedziałek 03:00 mail z `predykcje_2026.xlsx`.
+Typowy przebieg tygodnia: niedziela **20:00** discovery → poniedziałek **01:00** fill → poniedziałek **05:00** mail z `predykcje_2026.xlsx`.
