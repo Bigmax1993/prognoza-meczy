@@ -256,10 +256,20 @@ def upcoming_for_predictions(
     df: pd.DataFrame,
     *,
     as_of: pd.Timestamp | None = None,
+    within_days: int | None = 7,
 ) -> pd.DataFrame:
-    """Tylko nadchodzące mecze (bez wyniku, data >= dziś) — do arkusza Прогнози."""
+    """Nadchodzące w oknie [dziś .. dziś+N dni) — Прогнози (kolejny tydzień, domyślnie 7)."""
     _, future = split_played_and_future(df, as_of=as_of)
-    return future.copy()
+    if future.empty or within_days is None:
+        return future.copy()
+    if COL_DATA not in future.columns:
+        return future.copy()
+    cut = (as_of or pd.Timestamp.now()).normalize()
+    end = cut + pd.Timedelta(days=max(1, int(within_days)))
+    dates = pd.to_datetime(future[COL_DATA], dayfirst=True, errors="coerce")
+    # jak BBC: dziś + (within_days) dni do przodu → daty < end
+    mask = dates.dt.normalize() < end
+    return future.loc[mask.fillna(False)].copy()
 
 
 def parse_score(value: object) -> tuple[int, int] | None:
@@ -1524,6 +1534,7 @@ def export_excel(
     backtest_summary: pd.DataFrame | None = None,
     from_date: pd.Timestamp | None = None,
     as_of: pd.Timestamp | None = None,
+    within_days: int | None = 7,
 ) -> Path:
     out_path = path or OUT_XLSX
     if from_date is not None:
@@ -1537,6 +1548,11 @@ def export_excel(
     df_raw = ukrainize_for_excel(df_2026.copy())
     df_raw[COL_DATA] = pd.to_datetime(df_raw[COL_DATA], dayfirst=True).dt.strftime("%d/%m/%Y")
     played, future = split_played_and_future(df_raw, as_of=as_of)
+    if within_days is not None and not future.empty and COL_DATA in future.columns:
+        cut = (as_of or pd.Timestamp.now()).normalize()
+        end = cut + pd.Timedelta(days=max(1, int(within_days)))
+        dates = pd.to_datetime(future[COL_DATA], dayfirst=True, errors="coerce")
+        future = future.loc[(dates.dt.normalize() < end).fillna(False)].copy()
     future = future.reindex(columns=FUTURE_COLS)
     preds_ua = ukrainize_for_excel(_pred_sheet_export(predictions), fill_blank="—")
 
@@ -1718,7 +1734,12 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Nie dociagaj nadchodzacych meczow z FootyStats",
     )
-    parser.add_argument("--upcoming-days", type=int, default=7, help="Ile dni do przodu (BBC/FootyStats)")
+    parser.add_argument(
+        "--upcoming-days",
+        type=int,
+        default=7,
+        help="Ile dni do przodu: fixture BBC + Прогнози (domyslnie 7 = kolejny tydzien)",
+    )
     parser.add_argument("--refresh-upcoming", action="store_true", help="Pomin cache FootyStats")
     parser.add_argument(
         "--fill-missing",
@@ -1826,9 +1847,10 @@ def main(argv: list[str] | None = None) -> None:
 
     team_avg = compute_team_averages(df_history)
     league_avg = compute_league_averages(df_2026)
-    df_upcoming = upcoming_for_predictions(df_2026)
+    df_upcoming = upcoming_for_predictions(df_2026, within_days=args.upcoming_days)
     _safe_print(
-        f"Buduje predykcje (forma + O/U) dla {len(df_upcoming)} nadchodzacych meczow "
+        f"Buduje predykcje (forma + O/U) dla {len(df_upcoming)} meczow "
+        f"na kolejne {args.upcoming_days} dni "
         f"(z {len(df_2026)} od {args.od.strftime('%d/%m/%Y')})..."
     )
     if df_upcoming.empty:
@@ -1851,6 +1873,7 @@ def main(argv: list[str] | None = None) -> None:
         backtest_detail=bt_detail,
         backtest_summary=bt_summary,
         from_date=args.od,
+        within_days=args.upcoming_days,
     )
 
     mecze_x, preds_x, changed = _verify_exported_stats(
@@ -1871,6 +1894,7 @@ def main(argv: list[str] | None = None) -> None:
             backtest_detail=bt_detail,
             backtest_summary=bt_summary,
             from_date=args.od,
+            within_days=args.upcoming_days,
             path=path,
         )
         _safe_print(f"Excel po weryfikacji: {path}")

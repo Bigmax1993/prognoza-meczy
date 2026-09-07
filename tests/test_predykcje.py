@@ -371,9 +371,24 @@ def test_upcoming_for_predictions_excludes_played():
             "результат": ["2:1", None, "1:0"],
         }
     )
-    upcoming = pred.upcoming_for_predictions(df, as_of=as_of)
+    upcoming = pred.upcoming_for_predictions(df, as_of=as_of, within_days=7)
     assert list(upcoming["господар"]) == ["Valencia"]
     assert len(upcoming) == 1
+
+
+def test_upcoming_for_predictions_limits_to_next_week():
+    as_of = pd.Timestamp("2026-08-18")
+    df = pd.DataFrame(
+        {
+            "ліга": ["A", "B", "C"],
+            "дата": ["20/08/2026", "30/08/2026", "19/08/2026"],
+            "господар": ["Near", "Far", "AlsoNear"],
+            "гість": ["X", "Y", "Z"],
+            "результат": [None, None, None],
+        }
+    )
+    upcoming = pred.upcoming_for_predictions(df, as_of=as_of, within_days=7)
+    assert list(upcoming["господар"]) == ["Near", "AlsoNear"]
 
 
 def test_export_excel_creates_sheets(form_history, tmp_path):
