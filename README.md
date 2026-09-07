@@ -28,7 +28,7 @@ Actions: [github.com/Bigmax1993/prognoza-meczy/actions](https://github.com/Bigma
 2. **Zawsze** weryfikuje braki w **ostatnim tygodniu** rozegranych meczów (domyślnie `--fill-days 7`): ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Starsze mecze (od 13.08) zostają w Excelu, ale bez wołania API.
 3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5** — **tylko dla nadchodzących meczów** (bez wyniku, data ≥ dziś).
 4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). Rozegrane od 13.08 trafiają do **Матчі_2026**; nadchodzące do **Майбутні_матчі** i **Прогнози** (bez kolumny `результат` — typowany wynik to `прогноз_рахунок`).
-5. W poniedziałek **05:00** wysyła finalny Excel na Gmail (na Actions: artifact `predykcje-xlsx` z **Pipeline poniedziałek fill**).
+5. Po udanym **Pipeline poniedziałek fill** automatycznie wysyła finalny Excel na Gmail (Actions: `workflow_run` → artifact `predykcje-xlsx`).
 
 Kolejność uzupełniania luk (**zawsze**, na każdym `python predykcje.py`):
 
@@ -141,16 +141,16 @@ Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (
 ### Harmonogram tygodnia
 
 ```text
-niedziela 20:00  →  Pipeline niedziela discovery   (max 4 h, soft-stop ~210 min)
+niedziela 20:00     →  Pipeline niedziela discovery   (max 4 h, soft-stop ~210 min)
 poniedziałek 01:00  →  Pipeline poniedziałek fill     (max 4 h, dokończenie luk)
-poniedziałek 05:00  →  Wysyłka Gmail                  (~kilka sekund)
+po sukcesie fill    →  Wysyłka Gmail                  (automatycznie, workflow_run)
 ```
 
 | Workflow | Cron (UTC) | Kiedy (PL, lato) | Co |
 |----------|------------|------------------|-----|
 | [Pipeline niedziela discovery](.github/workflows/pipeline.yml) | `0 18 * * 0` | nd **20:00** | Build + Serper/Claude z `--fill-budget-minutes 210 --allow-incomplete` → artifact **`predykcje-partial`** |
 | [Pipeline poniedziałek fill](.github/workflows/pipeline-czesc2.yml) | `0 23 * * 0` | pn **01:00** | Bierze partial z discovery → dokańcza fill → artifact **`predykcje-xlsx`** |
-| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | `0 3 * * 1` | pn **05:00** | Ściąga `predykcje-xlsx` i wysyła mail |
+| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | — (`workflow_run`) | **zaraz po udanym fill** | Ściąga `predykcje-xlsx` z właśnie zakończonego fillu i wysyła mail |
 | [Testy](.github/workflows/test.yml) | — (push) | przy pushu na `main` | `pytest tests` |
 
 ### Dlaczego dwa runy po 4 h
@@ -205,7 +205,7 @@ Rozszerzony wariant: `python predykcje_max.py` → `predykcje_max_2026.xlsx`.
 | `scripts/audyt_danych.py` | Audyt źródła |
 | `.github/workflows/pipeline.yml` | Discovery (nd 20:00) |
 | `.github/workflows/pipeline-czesc2.yml` | Fill (pn 01:00) |
-| `.github/workflows/send-mail.yml` | Mail (pn 05:00) |
+| `.github/workflows/send-mail.yml` | Mail zaraz po udanym fill (`workflow_run`) |
 
 Ligi: Premier League, La Liga, Serie A, Bundesliga, Bundesliga 2, Eredivisie, Super League, Allsvenskan, Eliteserien.
 
@@ -230,4 +230,4 @@ Na GitHubie to samo robi workflow [Testy](.github/workflows/test.yml) przy pushu
 - Nie tłumacz nazw klubów (Arsenal, Sarpsborg 08, Elfsborg…).
 - Limit joba GitHub Actions: **4 h** — stąd dwa etapy i `--fill-budget-minutes`.
 
-Typowy przebieg tygodnia: niedziela **20:00** discovery → poniedziałek **01:00** fill → poniedziałek **05:00** mail z `predykcje_2026.xlsx`.
+Typowy przebieg tygodnia: niedziela **20:00** discovery → poniedziałek **01:00** fill → **od razu po fill** mail z `predykcje_2026.xlsx`.

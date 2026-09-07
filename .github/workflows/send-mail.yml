@@ -1,10 +1,13 @@
-# Poniedziałek 05:00 czasu polskiego (CEST = UTC+2). Zimą (CET) będzie 06:00.
-# GitHub Actions cron jest zawsze w UTC.
+# Startuje automatycznie po udanym Pipeline poniedziałek fill.
+# Ręcznie: Actions → Wysyłka Gmail poniedziałek → Run workflow.
 name: Wysyłka Gmail poniedziałek
 
 on:
-  schedule:
-    - cron: "0 3 * * 1"
+  workflow_run:
+    workflows:
+      - "Pipeline poniedziałek fill"
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -13,6 +16,7 @@ permissions:
 
 jobs:
   send:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -26,7 +30,11 @@ jobs:
       - name: Pobierz Excel z poniedziałkowego fill
         run: |
           set -euo pipefail
-          RUN_ID=$(gh run list --workflow=pipeline-czesc2.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            RUN_ID="${{ github.event.workflow_run.id }}"
+          else
+            RUN_ID=$(gh run list --workflow=pipeline-czesc2.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
           if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
             echo "Brak udanego runu pipeline-czesc2.yml"
             exit 1
