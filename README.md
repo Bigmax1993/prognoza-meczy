@@ -2,7 +2,8 @@
 
 Pipeline predykcji piłkarskich: historia lig Aleksa → braki statystyk (JSON → Serper → strona → Claude) → Excel po ukraińsku → mail w poniedziałek.
 
-Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax1993/prognoza-meczy)
+Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax1993/prognoza-meczy)  
+Actions: [github.com/Bigmax1993/prognoza-meczy/actions](https://github.com/Bigmax1993/prognoza-meczy/actions)
 
 ---
 
@@ -24,18 +25,18 @@ Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax19
 ## Co robi
 
 1. Bierze mecze lig Aleksa **od 13.08.2026** (`--od`), dociąga wyniki FT z BBC za lukę po ostatnim meczu w źródle i dokleja nadchodzące (domyślnie 7 dni).
-2. **Zawsze** weryfikuje braki w **ostatnim tygodniu** rozegranych meczów (domyślnie `--fill-days 7`): ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Starsze mecze (od 13.08) zostają w Excelu, ale bez wołania API. Pusty Excel po weryfikacji **w tym oknie** jest błędem.
+2. **Zawsze** weryfikuje braki w **ostatnim tygodniu** rozegranych meczów (domyślnie `--fill-days 7`): ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Starsze mecze (od 13.08) zostają w Excelu, ale bez wołania API.
 3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5** — **tylko dla nadchodzących meczów** (bez wyniku, data ≥ dziś).
 4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). Rozegrane od 13.08 trafiają do **Матчі_2026**; nadchodzące do **Майбутні_матчі** i **Прогнози** (bez kolumny `результат` — typowany wynik to `прогноз_рахунок`).
-5. W poniedziałek wysyła ten plik na Gmail (na Actions: artifact z niedzielnego pipeline).
+5. W poniedziałek **05:00** wysyła finalny Excel na Gmail (na Actions: artifact `predykcje-xlsx` z **Pipeline poniedziałek fill**).
 
 Kolejność uzupełniania luk (**zawsze**, na każdym `python predykcje.py`):
 
 Excel → skan pustych komórek **(ostatnie 7 dni)** → ponowne odpytanie `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel → **ponowna weryfikacja zapisanego pliku (te same 7 dni)**.
 
-Pipeline **wywala się**, jeśli po weryfikacji zostaną puste statystyki **w meczach z ostatniego tygodnia**. Nie ma flagi, która to pomija.
+**Kompletność:** domyślnie pipeline **wywala się**, jeśli po weryfikacji zostaną puste statystyki w ostatnim tygodniu. Na Actions część 1 (discovery) używa `--allow-incomplete` + `--fill-budget-minutes`, żeby zapisać postęp przed limitem 4 h; część 2 (fill) wymaga kompletnego Excela.
 
-Na GitHub Actions ten JSON jest w repo + w cache workflow, żeby niedzielny run nie walił w Claude od zera.
+Na GitHub Actions JSON braków jest w artifactach / cache workflow, żeby poniedziałkowy fill nie zaczynał Claude od zera.
 
 Przyszłe mecze **nie muszą** mieć faktu FT. Kalendarz idzie do osobnego arkusza.
 
@@ -78,10 +79,22 @@ python predykcje.py --fill-missing
 Opcje:
 
 ```powershell
-python predykcje.py --fill-missing --send-mail   # pipeline + mail (weryfikacja i tak zawsze)
+python predykcje.py --fill-missing
+python predykcje.py --fill-missing --fill-budget-minutes 210 --allow-incomplete   # jak discovery na Actions
+python predykcje.py --fill-missing --restore-excel artifacts/previous_predykcje_2026.xlsx
+python predykcje.py --fill-missing --send-mail
 python send_mail.py                              # sam Excel na MAIL_TO
 python -m pytest tests -q
 ```
+
+| Flaga | Znaczenie |
+|-------|-----------|
+| `--fill-missing` | JSON + Serper/Claude + weryfikacja Excela (w CI zawsze włączone) |
+| `--fill-days N` | Ile dni wstecz uzupełniać braki (domyślnie 7) |
+| `--fill-budget-minutes N` | Miękki limit czasu fill — zapisuje postęp i kończy przed hard limitem joba |
+| `--allow-incomplete` | Nie wymagaj pustego zestawu braków (część 1 / discovery) |
+| `--restore-excel …` | Uzupełnij puste pola z poprzedniego Excela przed API |
+| `--send-mail` | Wyślij gotowy xlsx na `MAIL_TO` |
 
 Źródło historii: `aleks_ligi_stats.xlsx`. Dociągnięcie wyników/statystyk:
 
@@ -94,7 +107,8 @@ python monthly_summary.py --year 2026
 
 ## Klucze API i sekrety
 
-**Nie commituj** `.env` ani haseł. Lokalnie: zmienne User w Windows. Na GitHubie: **Settings → Secrets and variables → Actions**.
+**Nie commituj** `.env` ani haseł. Lokalnie: zmienne User w Windows.  
+Na GitHubie sekrety są już w repo: **Settings → Secrets and variables → Actions**.
 
 | Secret | Do czego |
 |--------|----------|
@@ -122,21 +136,44 @@ Hasło do aplikacji: [myaccount.google.com/apppasswords](https://myaccount.googl
 
 ## GitHub Actions (cron)
 
-Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (CET) będzie +1 h.
+Czas poniżej: **Polska, lato (CEST = UTC+2)**. Cron GitHuba jest w UTC. Zimą (CET) crony przesuwają się o **+1 h** względem poniższych godzin PL.
 
-| Workflow | Kiedy | Co |
-|----------|--------|-----|
-| [Pipeline niedziela discovery](.github/workflows/pipeline.yml) | niedziela **20:00** | część 1: build + Serper/Claude z budżetem 210 min (`--allow-incomplete`) → artifact `predykcje-partial` (max **4 h**) |
-| [Pipeline poniedziałek fill](.github/workflows/pipeline-czesc2.yml) | poniedziałek **01:00** | część 2: kontynuuje z partial → finalny artifact `predykcje-xlsx` (max **4 h**) |
-| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | poniedziałek **05:00** (zimą **06:00**) | ściąga `predykcje-xlsx` z fill i wysyła mail |
-| [Testy](.github/workflows/test.yml) | push na `main` (też ręcznie) | `pytest tests` |
+### Harmonogram tygodnia
 
-Ręcznie: **Actions** → discovery → potem fill → potem wysyłka.  
-Duży `--fill-missing` może trwać **wiele godzin** — stąd dwa osobne runy po 4 h i miękki budżet (`--fill-budget-minutes`), żeby GitHub nie ubijał joba w środku API.
+```text
+niedziela 20:00  →  Pipeline niedziela discovery   (max 4 h, soft-stop ~210 min)
+poniedziałek 01:00  →  Pipeline poniedziałek fill     (max 4 h, dokończenie luk)
+poniedziałek 05:00  →  Wysyłka Gmail                  (~kilka sekund)
+```
 
-W checkoutcie jest już `predykcje_2026.xlsx`. `gh run download` **nie nadpisuje** plików (`file exists`), więc wysyłka ściąga artifact do pustego `artifacts/`, a potem kopiuje go na `predykcje_2026.xlsx`. Mail idzie z Excela z poniedziałkowego fill, nie z gita.
+| Workflow | Cron (UTC) | Kiedy (PL, lato) | Co |
+|----------|------------|------------------|-----|
+| [Pipeline niedziela discovery](.github/workflows/pipeline.yml) | `0 18 * * 0` | nd **20:00** | Build + Serper/Claude z `--fill-budget-minutes 210 --allow-incomplete` → artifact **`predykcje-partial`** |
+| [Pipeline poniedziałek fill](.github/workflows/pipeline-czesc2.yml) | `0 23 * * 0` | pn **01:00** | Bierze partial z discovery → dokańcza fill → artifact **`predykcje-xlsx`** |
+| [Wysyłka Gmail poniedziałek](.github/workflows/send-mail.yml) | `0 3 * * 1` | pn **05:00** | Ściąga `predykcje-xlsx` i wysyła mail |
+| [Testy](.github/workflows/test.yml) | — (push) | przy pushu na `main` | `pytest tests` |
 
-Discovery przed uruchomieniem pobiera do `artifacts/` poprzednie pliki `predykcje_2026.xlsx` z udanych fillów i **uzupełnia puste statystyki** (faule, rożne, kartki itd.) zanim odpali Serper/Claude — dzięki temu mecze starsze niż 7 dni nie tracą danych z poprzedniego tygodnia.
+### Dlaczego dwa runy po 4 h
+
+GitHub **ubija** pojedynczy job po **4 h**. Duży `--fill-missing` często tego nie mieści.  
+Dlatego:
+
+1. **Discovery** kończy się miękko przed limitem (`--fill-budget-minutes`) i zostawia Excel + `cache/missing_data.json` w `predykcje-partial`.
+2. **Fill** startuje kilka godzin później, wznawia z tego artifactu i publikuje finalne `predykcje-xlsx`.
+
+Ręcznie: **Actions** → najpierw discovery → po sukcesie fill → potem wysyłka.  
+Mail bez udanego fillu się wywali.
+
+### Artifacty
+
+| Artifact | Kto publikuje | Retention | Użycie |
+|----------|---------------|-----------|--------|
+| `predykcje-partial` | discovery | 3 dni | wejście do fill |
+| `predykcje-xlsx` | fill | 7 dni | wejście do maila + restore w kolejnym tygodniu |
+
+W checkoutcie jest już `predykcje_2026.xlsx`. `gh run download` **nie nadpisuje** istniejących plików (`file exists`), więc workflowy najpierw `rm` / kopiują do `artifacts/`.
+
+Discovery przed API pobiera poprzednie `predykcje_2026.xlsx` z udanych fillów i **uzupełnia puste statystyki** — mecze starsze niż 7 dni nie tracą danych z poprzedniego tygodnia.
 
 ---
 
@@ -156,8 +193,8 @@ Rozszerzony wariant: `python predykcje_max.py` → `predykcje_max_2026.xlsx`.
 
 | Plik | Rola |
 |------|------|
-| `predykcje.py` | Pipeline 2026, Excel UA, `--fill-missing`, `--send-mail` |
-| `fill_missing.py` | JSON → Serper → BS4 → Claude → walidacja |
+| `predykcje.py` | Pipeline 2026, Excel UA, `--fill-missing`, `--fill-budget-minutes`, `--allow-incomplete`, `--send-mail` |
+| `fill_missing.py` | JSON → Serper → BS4 → Claude → walidacja + soft deadline |
 | `send_mail.py` | Gmail SMTP + kopia w Wysłanych |
 | `upcoming.py` | Nadchodzące mecze (BBC) |
 | `team_names.py` | Aliasy klubów (bez tłumaczenia nazw) |
@@ -166,6 +203,9 @@ Rozszerzony wariant: `python predykcje_max.py` → `predykcje_max_2026.xlsx`.
 | `scrape_footystats.py` | Scraper FootyStats (mecze dnia) |
 | `predykcje_max.py` | Predykcje MAX |
 | `scripts/audyt_danych.py` | Audyt źródła |
+| `.github/workflows/pipeline.yml` | Discovery (nd 20:00) |
+| `.github/workflows/pipeline-czesc2.yml` | Fill (pn 01:00) |
+| `.github/workflows/send-mail.yml` | Mail (pn 05:00) |
 
 Ligi: Premier League, La Liga, Serie A, Bundesliga, Bundesliga 2, Eredivisie, Super League, Allsvenskan, Eliteserien.
 
@@ -188,5 +228,6 @@ Na GitHubie to samo robi workflow [Testy](.github/workflows/test.yml) przy pushu
 - Nordic (Allsvenskan, Eliteserien, Super League): w publicznym CSV często tylko wynik; reszta z JSON/API albo puste.
 - Cloudflare na FootyStats może blokować scraper.
 - Nie tłumacz nazw klubów (Arsenal, Sarpsborg 08, Elfsborg…).
+- Limit joba GitHub Actions: **4 h** — stąd dwa etapy i `--fill-budget-minutes`.
 
 Typowy przebieg tygodnia: niedziela **20:00** discovery → poniedziałek **01:00** fill → poniedziałek **05:00** mail z `predykcje_2026.xlsx`.
