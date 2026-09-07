@@ -35,6 +35,7 @@ jobs:
           key: missing-data-${{ github.run_id }}-1
           restore-keys: |
             missing-data-
+          save-always: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

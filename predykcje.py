@@ -183,6 +183,9 @@ def ukrainize_for_excel(df: pd.DataFrame, *, fill_blank: str | None = None) -> p
     if df is None or df.empty:
         return df
     out = df.copy()
+    drop_meta = [c for c in out.columns if str(c).startswith("_")]
+    if drop_meta:
+        out = out.drop(columns=drop_meta, errors="ignore")
     team_cols = {COL_HOME, COL_AWAY, "przewidywany_zwyciezca", "прогноз_переможець"}
     if COL_LIGA in out.columns:
         out[COL_LIGA] = out[COL_LIGA].map(lambda x: LEAGUE_UA.get(str(x), x) if pd.notna(x) else x)

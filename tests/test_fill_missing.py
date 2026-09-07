@@ -365,10 +365,103 @@ def test_verify_and_fill_second_round_fills_remaining(tmp_path):
         cache_path=tmp_path / "missing_data.json",
         live=True,
         max_rounds=3,
+        use_bbc=False,
     )
     assert int(filled.iloc[0]["кутові"]) == 6
     assert int(filled.iloc[0]["фоли"]) == 32
     assert inv["verification"]["remaining_fields"] == 0
+
+
+def test_fill_stats_from_bbc_writes_excel_columns(tmp_path):
+    df = pd.DataFrame(
+        [
+            {
+                "ліга": "Eredivisie",
+                "дата": "06/09/2026",
+                "господар": "Telstar",
+                "гість": "Cambuur",
+                "результат": "2:2",
+                "фоли_господар": pd.NA,
+                "фоли_гість": pd.NA,
+                "фоли": pd.NA,
+                "кутові_господар": pd.NA,
+                "кутові_гість": pd.NA,
+                "кутові": pd.NA,
+                "жовті_картки_господар": pd.NA,
+                "жовті_картки_гість": pd.NA,
+                "жовті_картки": pd.NA,
+                "удари_господар": pd.NA,
+                "удари_гість": pd.NA,
+                "удари": pd.NA,
+                "удари_в_площину_господар": pd.NA,
+                "удари_в_площину_гість": pd.NA,
+                "удари_в_площину": pd.NA,
+                "_bbc_live_url": "https://www.bbc.com/sport/football/live/fake",
+            }
+        ]
+    )
+
+    def fetch_stats(url: str):
+        assert "fake" in url
+        return {
+            "фоли_господар": 7,
+            "фоли_гість": 20,
+            "фоли": 27,
+            "кутові_господар": 4,
+            "кутові_гість": 2,
+            "кутові": 6,
+            "жовті_картки_господар": 3,
+            "жовті_картки_гість": 4,
+            "жовті_картки": 7,
+            "удари_господар": 11,
+            "удари_гість": 8,
+            "удари": 19,
+            "удари_в_площину_господар": 2,
+            "удари_в_площину_гість": 3,
+            "удари_в_площину": 5,
+        }
+
+    filled, inv = fm.fill_stats_from_bbc(
+        df,
+        as_of=pd.Timestamp("2026-09-07"),
+        cache_path=tmp_path / "missing_data.json",
+        fetch_stats_fn=fetch_stats,
+    )
+    row = filled.iloc[0]
+    assert int(row["фоли"]) == 27
+    assert int(row["кутові"]) == 6
+    assert int(row["удари_в_площину"]) == 5
+    gap = next(g for g in inv["gaps"] if g["home"] == "Telstar")
+    assert gap["status"] == "filled"
+    assert gap["reason"] == "bbc_live_stats"
+
+
+def test_fill_stats_from_bbc_no_stats_leaves_pending(tmp_path):
+    df = pd.DataFrame(
+        [
+            {
+                "ліга": "Eredivisie",
+                "дата": "06/09/2026",
+                "господар": "Telstar",
+                "гість": "Cambuur",
+                "результат": "2:2",
+                "фоли_господар": pd.NA,
+                "фоли_гість": pd.NA,
+                "фоли": pd.NA,
+                "_bbc_live_url": "https://www.bbc.com/sport/football/live/empty",
+            }
+        ]
+    )
+    filled, inv = fm.fill_stats_from_bbc(
+        df,
+        as_of=pd.Timestamp("2026-09-07"),
+        cache_path=tmp_path / "missing_data.json",
+        fetch_stats_fn=lambda url: None,
+    )
+    assert pd.isna(filled.iloc[0]["фоли_господар"]) or filled.iloc[0]["фоли_господар"] == ""
+    gap = next(g for g in inv["gaps"] if g["home"] == "Telstar")
+    assert gap["status"] == "pending"
+    assert "bbc" in str(gap.get("reason") or "")
 
 
 def test_apply_inventory_does_not_overwrite_existing():

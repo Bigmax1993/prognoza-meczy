@@ -116,6 +116,94 @@ def test_parse_bbc_full_time_scores():
     assert by_home["Elche"]["Wynik"] == "0:5"
 
 
+def test_parse_bbc_fixtures_captures_live_url():
+    html = """
+    <html><body>
+      <div>
+        <h2 class="ssrcss-m22vfq-GroupHeader">Dutch Eredivisie</h2>
+        <a href="/sport/football/live/c65y599e2np9t">
+          <span class="visually-hidden">Telstar 2 , Cambuur 2 at Full time</span>
+        </a>
+        <span class="visually-hidden">Telstar 2 , Cambuur 2 at Full time</span>
+      </div>
+    </body></html>
+    """
+    rows = up.parse_bbc_fixtures(html, date(2026, 9, 6))
+    assert len(rows) == 1
+    assert rows[0]["Gospodarz"] == "Telstar"
+    assert rows[0]["bbc_live_url"] == "https://www.bbc.com/sport/football/live/c65y599e2np9t"
+
+
+def _bbc_initial_html(payload: dict) -> str:
+    import json
+
+    inner = json.dumps(payload, ensure_ascii=False)
+    escaped = inner.replace("\\", "\\\\").replace('"', '\\"')
+    return f'<html><script>window.__INITIAL_DATA__="{escaped}";</script></html>'
+
+
+def test_extract_bbc_match_stats_maps_ua_columns():
+    payload = {
+        "data": {
+            "match-stats?x": {
+                "data": {
+                    "homeTeam": {
+                        "stats": {
+                            "foulsCommitted": {"total": 7},
+                            "cornersWon": {"total": 4},
+                            "shotsTotal": {"total": 11},
+                            "shotsOnTarget": {"total": 2},
+                            "defence": {"totalYellowCard": {"total": 3}},
+                        }
+                    },
+                    "awayTeam": {
+                        "stats": {
+                            "foulsCommitted": {"total": 20},
+                            "cornersWon": {"total": 2},
+                            "shotsTotal": {"total": 8},
+                            "shotsOnTarget": {"total": 3},
+                            "defence": {"totalYellowCard": {"total": 4}},
+                        }
+                    },
+                }
+            }
+        }
+    }
+    stats = up.extract_bbc_match_stats(_bbc_initial_html(payload))
+    assert stats is not None
+    assert stats["фоли_господар"] == 7
+    assert stats["фоли_гість"] == 20
+    assert stats["фоли"] == 27
+    assert stats["кутові"] == 6
+    assert stats["жовті_картки"] == 7
+    assert stats["удари"] == 19
+    assert stats["удари_в_площину"] == 5
+
+
+def test_extract_bbc_match_stats_missing_block_returns_none():
+    html = _bbc_initial_html({"data": {"other": {"foo": 1}}})
+    assert up.extract_bbc_match_stats(html) is None
+
+
+def test_rows_to_aleks_keeps_bbc_live_url():
+    rows = [
+        {
+            "Kraj": "",
+            "Liga": "Eredivisie",
+            "_aleks_liga": "Eredivisie",
+            "Gospodarz": "Telstar",
+            "Gość": "Cambuur",
+            "Data": "06/09/2026",
+            "Wynik": "2:2",
+            "bbc_live_url": "https://www.bbc.com/sport/football/live/c65y599e2np9t",
+        }
+    ]
+    known = {"Eredivisie": ["Telstar", "Cambuur"]}
+    df = up.rows_to_aleks_fixtures(rows, match_day=date(2026, 9, 6), known=known)
+    assert len(df) == 1
+    assert df.iloc[0]["_bbc_live_url"].endswith("/c65y599e2np9t")
+
+
 def test_rows_to_aleks_keeps_full_time_score():
     rows = [
         {

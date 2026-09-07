@@ -34,6 +34,7 @@ jobs:
           key: missing-data-${{ github.run_id }}-2
           restore-keys: |
             missing-data-
+          save-always: true
       - name: Pobierz artifact z niedzielnego discovery
         run: |
           set -euo pipefail

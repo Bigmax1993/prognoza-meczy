@@ -150,8 +150,48 @@ def _league_block(h2):
     return None
 
 
+def _abs_bbc_url(href: str) -> str:
+    h = (href or "").strip()
+    if not h:
+        return ""
+    if h.startswith("http://") or h.startswith("https://"):
+        return h
+    if h.startswith("/"):
+        return "https://www.bbc.com" + h
+    return "https://www.bbc.com/" + h
+
+
+def _team_pair_key(home: str, away: str) -> tuple[str, str]:
+    return (canonical_name(str(home or "")), canonical_name(str(away or "")))
+
+
+def _live_url_map_from_box(box) -> dict[tuple[str, str], str]:
+    """Mapa (canonical home, away) → URL live ze scorera BBC."""
+    out: dict[tuple[str, str], str] = {}
+    if box is None:
+        return out
+    for a in box.select('a[href*="/sport/football/live/"]'):
+        href = _abs_bbc_url(a.get("href") or "")
+        if not href:
+            continue
+        candidates: list[str] = []
+        for span in a.select("span.visually-hidden"):
+            candidates.append(span.get_text(" ", strip=True))
+        candidates.append(a.get_text(" ", strip=True))
+        for text in candidates:
+            m = SCORE_RE.match(text) or SCORE_RE.search(text)
+            if m:
+                out[_team_pair_key(m.group(1), m.group(3))] = href
+                break
+            m = VERSUS_RE.match(text) or VERSUS_RE.search(text)
+            if m:
+                out[_team_pair_key(m.group(1), m.group(2))] = href
+                break
+    return out
+
+
 def parse_bbc_fixtures(html: str, match_day: date) -> list[dict]:
-    """Parsuje mecze lig Aleksa ze strony BBC Sport (FT + nadchodzące)."""
+    """Parsuje mecze lig Aleksa ze strony BBC Sport (FT + nadchodzące + live URL)."""
     soup = BeautifulSoup(html or "", "lxml")
     rows: list[dict] = []
     date_str = match_day.strftime("%d/%m/%Y")
@@ -163,38 +203,253 @@ def parse_bbc_fixtures(html: str, match_day: date) -> list[dict]:
         box = _league_block(h2)
         if box is None:
             continue
+        live_map = _live_url_map_from_box(box)
         for span in box.select("span.visually-hidden"):
             text = span.get_text(" ", strip=True)
             m = VERSUS_RE.match(text)
             if m:
+                home, away = m.group(1).strip(), m.group(2).strip()
                 rows.append(
                     {
                         "Kraj": "",
                         "Liga": liga,
                         "_aleks_liga": liga,
-                        "Gospodarz": m.group(1).strip(),
-                        "Gość": m.group(2).strip(),
+                        "Gospodarz": home,
+                        "Gość": away,
                         "Data": date_str,
                         "Wynik": "",
+                        "bbc_live_url": live_map.get(_team_pair_key(home, away), ""),
                     }
                 )
                 continue
             m = SCORE_RE.match(text)
             if not m:
                 continue
+            home, away = m.group(1).strip(), m.group(3).strip()
             hg, ag = int(m.group(2)), int(m.group(4))
             rows.append(
                 {
                     "Kraj": "",
                     "Liga": liga,
                     "_aleks_liga": liga,
-                    "Gospodarz": m.group(1).strip(),
-                    "Gość": m.group(3).strip(),
+                    "Gospodarz": home,
+                    "Gość": away,
                     "Data": date_str,
                     "Wynik": f"{hg}:{ag}",
+                    "bbc_live_url": live_map.get(_team_pair_key(home, away), ""),
                 }
             )
-    return rows
+    # span.visually-hidden bywa i w linku live, i obok — usuń duplikaty
+    deduped: list[dict] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for row in rows:
+        key = (
+            str(row.get("Liga") or ""),
+            str(row.get("Gospodarz") or ""),
+            str(row.get("Gość") or ""),
+            str(row.get("Wynik") or ""),
+        )
+        if key in seen:
+            # uzupełnij URL, jeśli wcześniejszy wiersz go nie miał
+            if row.get("bbc_live_url"):
+                for prev in deduped:
+                    pkey = (
+                        str(prev.get("Liga") or ""),
+                        str(prev.get("Gospodarz") or ""),
+                        str(prev.get("Gość") or ""),
+                        str(prev.get("Wynik") or ""),
+                    )
+                    if pkey == key and not prev.get("bbc_live_url"):
+                        prev["bbc_live_url"] = row["bbc_live_url"]
+            continue
+        seen.add(key)
+        deduped.append(row)
+    return deduped
+
+
+def parse_bbc_initial_data(html: str) -> dict[str, Any] | None:
+    """Wyciąga JSON z window.__INITIAL_DATA__ na stronie BBC live."""
+    text = html or ""
+    marker = 'window.__INITIAL_DATA__="'
+    start = text.find(marker)
+    if start < 0:
+        marker = "window.__INITIAL_DATA__='"
+        start = text.find(marker)
+        if start < 0:
+            return None
+        quote = marker[-1]
+    else:
+        quote = '"'
+    start += len(marker)
+    end = text.find(f"{quote};</script>", start)
+    if end < 0:
+        end = text.find(f"{quote};", start)
+    if end < 0:
+        return None
+    raw = text[start:end]
+    try:
+        decoded = raw.encode("utf-8").decode("unicode_escape")
+        return json.loads(decoded)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+        try:
+            # fallback: ręczna zamiana \" → "
+            decoded = (
+                raw.replace(r"\\", "\\")
+                .replace(r"\"", '"')
+                .replace(r"\/", "/")
+                .replace(r"\n", "\n")
+                .replace(r"\r", "\r")
+                .replace(r"\t", "\t")
+            )
+            return json.loads(decoded)
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+
+def _bbc_stat_total(stats: dict[str, Any] | None, *path: str) -> int | None:
+    node: Any = stats or {}
+    for key in path:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    if node is None:
+        return None
+    if isinstance(node, dict) and "total" in node:
+        node = node.get("total")
+    try:
+        return int(round(float(node)))
+    except (TypeError, ValueError):
+        return None
+
+
+def _find_bbc_team_stats_block(data: Any) -> dict[str, Any] | None:
+    """Szuka węzła z homeTeam.stats / awayTeam.stats (match-stats)."""
+    if isinstance(data, dict):
+        home = data.get("homeTeam")
+        away = data.get("awayTeam")
+        if isinstance(home, dict) and isinstance(away, dict):
+            if isinstance(home.get("stats"), dict) or isinstance(away.get("stats"), dict):
+                return data
+        for value in data.values():
+            found = _find_bbc_team_stats_block(value)
+            if found is not None:
+                return found
+    elif isinstance(data, list):
+        for value in data:
+            found = _find_bbc_team_stats_block(value)
+            if found is not None:
+                return found
+    return None
+
+
+def extract_bbc_match_stats(html: str) -> dict[str, Any] | None:
+    """Mapuje boxscore BBC live → kolumny UA (faule/rożne/kartki/strzały)."""
+    payload = parse_bbc_initial_data(html)
+    if not payload:
+        return None
+    block = _find_bbc_team_stats_block(payload)
+    if not block:
+        return None
+    home_stats = ((block.get("homeTeam") or {}).get("stats")) or {}
+    away_stats = ((block.get("awayTeam") or {}).get("stats")) or {}
+    if not home_stats and not away_stats:
+        return None
+
+    def pair(h: int | None, a: int | None) -> tuple[int | None, int | None, int | None]:
+        if h is None and a is None:
+            return None, None, None
+        if h is not None and a is not None:
+            return h, a, h + a
+        return h, a, None
+
+    fh = _bbc_stat_total(home_stats, "foulsCommitted")
+    fa = _bbc_stat_total(away_stats, "foulsCommitted")
+    ch = _bbc_stat_total(home_stats, "cornersWon")
+    ca = _bbc_stat_total(away_stats, "cornersWon")
+    yh = _bbc_stat_total(home_stats, "defence", "totalYellowCard")
+    if yh is None:
+        yh = _bbc_stat_total(home_stats, "totalYellowCard")
+    ya = _bbc_stat_total(away_stats, "defence", "totalYellowCard")
+    if ya is None:
+        ya = _bbc_stat_total(away_stats, "totalYellowCard")
+    sh = _bbc_stat_total(home_stats, "shotsTotal")
+    sa = _bbc_stat_total(away_stats, "shotsTotal")
+    soh = _bbc_stat_total(home_stats, "shotsOnTarget")
+    soa = _bbc_stat_total(away_stats, "shotsOnTarget")
+
+    out: dict[str, Any] = {}
+    mapping = [
+        ("фоли", *pair(fh, fa)),
+        ("кутові", *pair(ch, ca)),
+        ("жовті_картки", *pair(yh, ya)),
+        ("удари", *pair(sh, sa)),
+        ("удари_в_площину", *pair(soh, soa)),
+    ]
+    for base, hv, av, tot in mapping:
+        if hv is not None:
+            out[f"{base}_господар"] = hv
+        if av is not None:
+            out[f"{base}_гість"] = av
+        if tot is not None:
+            out[base] = tot
+    return out or None
+
+
+def fetch_bbc_match_stats(url: str, *, timeout: int = 45) -> dict[str, Any] | None:
+    """GET strony BBC live → dict kolumn UA albo None."""
+    href = _abs_bbc_url(url)
+    if not href:
+        return None
+    try:
+        r = requests.get(href, timeout=timeout, headers={"User-Agent": BBC_UA})
+        if r.status_code != 200 or len(r.content) < 500:
+            logger.warning("BBC live %s: HTTP %s", href, r.status_code)
+            return None
+        html = r.content.decode("utf-8", errors="replace")
+        stats = extract_bbc_match_stats(html)
+        if not stats:
+            logger.info("BBC live %s: brak match-stats w HTML", href)
+        return stats
+    except Exception as exc:
+        logger.warning("BBC live fail %s: %s", href, exc)
+        return None
+
+
+def resolve_bbc_live_url(
+    match_day: date,
+    home: str,
+    away: str,
+    *,
+    html: str | None = None,
+    rows: list[dict] | None = None,
+) -> str:
+    """Szuka URL live dla meczu (HTML dnia, lista rows albo cache fixtures)."""
+    key = _team_pair_key(home, away)
+    if rows:
+        for row in rows:
+            if _team_pair_key(row.get("Gospodarz") or "", row.get("Gość") or "") == key:
+                url = str(row.get("bbc_live_url") or "").strip()
+                if url:
+                    return url
+    if html:
+        for row in parse_bbc_fixtures(html, match_day):
+            if _team_pair_key(row.get("Gospodarz") or "", row.get("Gość") or "") == key:
+                url = str(row.get("bbc_live_url") or "").strip()
+                if url:
+                    return url
+    day_key = match_day.strftime("%Y-%m-%d")
+    cached = load_upcoming_cache(ttl_hours=24 * 14)
+    if cached and isinstance(cached.get("days"), dict):
+        for row in cached["days"].get(day_key) or []:
+            if _team_pair_key(row.get("Gospodarz") or "", row.get("Gość") or "") == key:
+                url = str(row.get("bbc_live_url") or "").strip()
+                if url:
+                    return url
+    fetched = fetch_bbc_day(match_day)
+    for row in fetched:
+        if _team_pair_key(row.get("Gospodarz") or "", row.get("Gość") or "") == key:
+            return str(row.get("bbc_live_url") or "").strip()
+    return ""
 
 
 def fetch_bbc_day(day: date) -> list[dict]:
@@ -243,16 +498,18 @@ def rows_to_aleks_fixtures(
             score = ""
         stats = dict(STAT_EMPTY)
         stats["оз"] = btts
-        out.append(
-            {
-                COL_LIGA: liga,
-                COL_DATA: date_str,
-                COL_HOME: home,
-                COL_AWAY: away,
-                COL_RESULT: score,
-                **stats,
-            }
-        )
+        live_url = str(m.get("bbc_live_url") or "").strip()
+        row_out: dict[str, Any] = {
+            COL_LIGA: liga,
+            COL_DATA: date_str,
+            COL_HOME: home,
+            COL_AWAY: away,
+            COL_RESULT: score,
+            **stats,
+        }
+        if live_url:
+            row_out["_bbc_live_url"] = live_url
+        out.append(row_out)
     if not out:
         return pd.DataFrame(columns=[COL_LIGA, COL_DATA, COL_HOME, COL_AWAY, COL_RESULT])
     return pd.DataFrame(out).drop_duplicates(subset=[COL_LIGA, COL_DATA, COL_HOME, COL_AWAY])

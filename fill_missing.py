@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Uzupełnianie luk: JSON (braki) → Serper → BS4 → Claude → walidacja → Excel.
+"""Uzupełnianie luk: BBC live → JSON/Excel, potem Serper → BS4 → Claude.
 
 1. Skanuje mecze i zapisuje braki do cache/missing_data.json
-2. Serper szuka stron ze statystykami (faule, rożne, kartki, strzały)
-3. requests+BeautifulSoup pobiera HTML
-4. Claude akceptuje TYLKO liczby z tekstu strony (bez zmyślania)
-5. Walidacja → dopisanie do JSON w lukę → zapis Excel
-6. Po zapisie Excela: odczyt pliku → puste komórki z JSON, reszta Serper/Claude → JSON → Excel
-
-
+2. BBC Sport live (__INITIAL_DATA__) uzupełnia boxscore bez Claude
+3. Serper szuka stron ze statystykami na pozostałe braki
+4. requests+BeautifulSoup pobiera HTML
+5. Claude akceptuje TYLKO liczby z tekstu strony (bez zmyślania)
+6. Walidacja → dopisanie do JSON → zapis Excel
+7. Po zapisie Excela: puste komórki → JSON ponownie → Serper/Claude
 
 Klucze w środowisku / .env:
   SERPER_API_KEY
@@ -21,7 +20,7 @@ import logging
 import os
 import re
 import time
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -1063,6 +1062,140 @@ def export_known_stats_to_inventory(
     return inv
 
 
+def _gap_match_day(gap: dict[str, Any]) -> date | None:
+    raw = str(gap.get("date") or "").strip()
+    ts = pd.to_datetime(raw, dayfirst=True, errors="coerce")
+    if pd.isna(ts):
+        return None
+    return pd.Timestamp(ts).date()
+
+
+def _bbc_url_from_df(df: pd.DataFrame, gap: dict[str, Any]) -> str:
+    if df is None or df.empty or "_bbc_live_url" not in df.columns:
+        return ""
+    key = gap.get("key") or row_key(gap.get("date"), gap.get("home"), gap.get("away"))
+    for _, row in df.iterrows():
+        if row_key(row.get(COL_DATA), row.get(COL_HOME), row.get(COL_AWAY)) != key:
+            continue
+        url = str(row.get("_bbc_live_url") or "").strip()
+        if url:
+            return url
+    return ""
+
+
+def fill_stats_from_bbc(
+    df: pd.DataFrame,
+    *,
+    as_of: pd.Timestamp | None = None,
+    from_date: pd.Timestamp | None = None,
+    cache_path: Path | None = None,
+    fetch_stats_fn: Callable[[str], dict[str, Any] | None] | None = None,
+    resolve_url_fn: Callable[..., str] | None = None,
+    deadline: float | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Uzupełnia braki boxscore ze stron BBC live (bez Claude) → JSON + DataFrame."""
+    import upcoming as up
+
+    path = cache_path or STATS_JSON
+    inventory = build_inventory(df, as_of=as_of, from_date=from_date, path=path)
+    fetch_stats = fetch_stats_fn or up.fetch_bbc_match_stats
+    day_cache: dict[str, list[dict[str, Any]]] = {}
+    budget_exhausted = False
+
+    for gap in inventory["gaps"]:
+        if deadline is not None and time.monotonic() >= deadline:
+            budget_exhausted = True
+            logger.warning("BBC fill budget exhausted — zapisuję postęp")
+            break
+        missing = list(gap.get("missing") or [])
+        if not missing:
+            continue
+        # BBC nie uzupełnia samego wyniku — tylko boxscore
+        miss_stats = [c for c in missing if c in STAT_COLUMNS]
+        if not miss_stats:
+            continue
+        extra = _complete_totals({}, gap.get("filled") or {}, set(miss_stats))
+        if extra:
+            gap.setdefault("filled", {}).update(extra)
+            gap["missing"] = [c for c in gap["missing"] if c not in gap["filled"]]
+            miss_stats = [c for c in miss_stats if c not in gap["filled"]]
+            if not gap["missing"]:
+                gap["status"] = "filled"
+                continue
+            if not miss_stats:
+                continue
+
+        url = str(gap.get("bbc_live_url") or gap.get("source_url") or "").strip()
+        if not url or "bbc.com/sport/football/live" not in url:
+            url = _bbc_url_from_df(df, gap)
+        if not url:
+            day = _gap_match_day(gap)
+            if day is not None:
+                day_key = day.strftime("%Y-%m-%d")
+                if day_key not in day_cache:
+                    day_cache[day_key] = up.fetch_bbc_day(day)
+                rows = day_cache[day_key]
+                url = up.resolve_bbc_live_url(
+                    day,
+                    str(gap.get("home") or ""),
+                    str(gap.get("away") or ""),
+                    rows=rows,
+                )
+                if not url and resolve_url_fn is not None:
+                    url = resolve_url_fn(day, gap.get("home") or "", gap.get("away") or "")
+        if not url:
+            gap["reason"] = gap.get("reason") or "bbc: brak live URL"
+            continue
+
+        gap["bbc_live_url"] = url
+        try:
+            stats = fetch_stats(url)
+        except Exception as exc:
+            logger.warning("BBC stats fail %s: %s", gap.get("key"), exc)
+            gap["reason"] = f"bbc: {exc}"
+            continue
+        if not stats:
+            gap["pages"] = list(gap.get("pages") or [])
+            gap["pages"].append(
+                {"url": url, "title": "BBC live", "accepted": False, "reason": "no_match_stats"}
+            )
+            gap["reason"] = "bbc: brak match-stats"
+            continue
+
+        filled_now = {k: v for k, v in stats.items() if k in miss_stats and v is not None}
+        filled_now = _complete_totals(filled_now, gap.get("filled") or {}, set(miss_stats))
+        if not filled_now:
+            continue
+        gap.setdefault("filled", {}).update(filled_now)
+        gap["missing"] = [c for c in gap["missing"] if c not in gap["filled"]]
+        gap["source_url"] = url
+        gap["reason"] = "bbc_live_stats"
+        gap["pages"] = list(gap.get("pages") or [])
+        gap["pages"].append(
+            {
+                "url": url,
+                "title": "BBC live",
+                "accepted": True,
+                "reason": "bbc_live_stats",
+            }
+        )
+        if gap["missing"]:
+            gap["status"] = "partial"
+        else:
+            gap["status"] = "filled"
+        save_missing_json(inventory, path)
+
+    inventory["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    inventory["budget_exhausted"] = bool(inventory.get("budget_exhausted") or budget_exhausted)
+    inventory["summary"] = inventory_summary(
+        inventory["gaps"],
+        rows=len(df),
+        future_skipped=int((inventory.get("summary") or {}).get("skipped_future") or 0),
+    )
+    save_missing_json(inventory, path)
+    return apply_inventory(df, inventory), inventory
+
+
 def fill_stats(
     df: pd.DataFrame,
     *,
@@ -1248,16 +1381,28 @@ def verify_and_fill(
     live: bool = True,
     max_rounds: int = 3,
     deadline: float | None = None,
+    use_bbc: bool = True,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Weryfikuje braki i dociąga je w rundach, aż nie ma postępu."""
+    """Weryfikuje braki: najpierw BBC live, potem Serper/Claude w rundach."""
     path = cache_path or STATS_JSON
     out = complete_row_totals(df)
     inventory: dict[str, Any] = load_missing_json(path)
     out = apply_inventory(out, inventory)
     out = complete_row_totals(out)
+
+    if use_bbc:
+        out, inventory = fill_stats_from_bbc(
+            out,
+            as_of=as_of,
+            from_date=from_date,
+            cache_path=path,
+            deadline=deadline,
+        )
+        out = complete_row_totals(out)
+
     last_fields: int | None = None
     used_rounds = 0
-    budget_exhausted = False
+    budget_exhausted = bool(inventory.get("budget_exhausted"))
     for rnd in range(max(1, max_rounds)):
         if deadline is not None and time.monotonic() >= deadline:
             budget_exhausted = True
@@ -1268,6 +1413,9 @@ def verify_and_fill(
             used_rounds = rnd
             break
         if last_fields is not None and n >= last_fields:
+            used_rounds = rnd
+            break
+        if not live:
             used_rounds = rnd
             break
         last_fields = n
@@ -1287,8 +1435,6 @@ def verify_and_fill(
         out = complete_row_totals(out)
         if inventory.get("budget_exhausted"):
             budget_exhausted = True
-            break
-        if not live:
             break
     out = complete_row_totals(out)
     audit = audit_missing(out, as_of=as_of, from_date=from_date)
