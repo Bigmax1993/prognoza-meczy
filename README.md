@@ -1,6 +1,6 @@
 # Prognoza meczy
 
-Pipeline predykcji piłkarskich: historia lig Aleksa → braki statystyk (JSON → Serper → strona → Claude) → Excel po ukraińsku → mail w poniedziałek.
+Pipeline predykcji piłkarskich: historia lig Aleksa → braki statystyk (BBC live → JSON → Serper → strona → Claude) → Excel po ukraińsku → mail w poniedziałek.
 
 Repozytorium: [github.com/Bigmax1993/prognoza-meczy](https://github.com/Bigmax1993/prognoza-meczy)  
 Actions: [github.com/Bigmax1993/prognoza-meczy/actions](https://github.com/Bigmax1993/prognoza-meczy/actions)
@@ -25,14 +25,16 @@ Actions: [github.com/Bigmax1993/prognoza-meczy/actions](https://github.com/Bigma
 ## Co robi
 
 1. Bierze mecze lig Aleksa **od 13.08.2026** (`--od`), dociąga wyniki FT z BBC za lukę po ostatnim meczu w źródle i dokleja nadchodzące (domyślnie 7 dni).
-2. **Zawsze** weryfikuje braki w **ostatnim tygodniu** rozegranych meczów (domyślnie `--fill-days 7`): ponownie odpytuje `cache/missing_data.json` i uzupełnia luki (faule, rożne, kartki, strzały) z JSON, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Starsze mecze (od 13.08) zostają w Excelu, ale bez wołania API.
+2. **Zawsze** weryfikuje braki w **ostatnim tygodniu** rozegranych meczów (domyślnie `--fill-days 7`): najpierw boxscore z **BBC live**, potem `cache/missing_data.json`, a resztę z Serper + strony + Claude — **bez zmyślania liczb**. Starsze mecze (od 13.08) zostają w Excelu, ale bez wołania API.
 3. Liczy 1X2 (Poisson z oczekiwanych goli), BTTS, O/U rożnych **9.5** i żółtych **3.5** — **tylko dla nadchodzących meczów** (bez wyniku, data ≥ dziś).
 4. Zapisuje `predykcje_2026.xlsx` (nagłówki/ligi po ukraińsku, **nazwy klubów bez zmian**). Rozegrane od 13.08 trafiają do **Матчі_2026**; nadchodzące do **Майбутні_матчі** i **Прогнози** (bez kolumny `результат` — typowany wynik to `прогноз_рахунок`).
 5. Po udanym **Pipeline poniedziałek fill** automatycznie wysyła finalny Excel na Gmail (Actions: `workflow_run` → artifact `predykcje-xlsx`).
 
 Kolejność uzupełniania luk (**zawsze**, na każdym `python predykcje.py`):
 
-Excel → skan pustych komórek **(ostatnie 7 dni)** → ponowne odpytanie `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel → **ponowna weryfikacja zapisanego pliku (te same 7 dni)**.
+Excel → skan pustych komórek **(ostatnie 7 dni)** → **BBC live** (`__INITIAL_DATA__` / match-stats) → ponowne odpytanie `cache/missing_data.json` → **API tylko gdy w JSON też pusto** → Serper + HTML + Claude → walidacja → JSON → Excel → **ponowna weryfikacja zapisanego pliku (te same 7 dni)**.
+
+**BBC i żółte kartki:** strona BBC często **pomija** `totalYellowCard`, gdy drużyna ma **0** kartek (blok `defence` istnieje bez tego pola). Parser traktuje wtedy brak jako `0`, żeby fill nie zostawiał pustych `жовті_картки_гість` / sumy (np. Malmö FF – Örgryte).
 
 **Kompletność:** domyślnie pipeline **wywala się**, jeśli po weryfikacji zostaną puste statystyki w ostatnim tygodniu. Na Actions część 1 (discovery) używa `--allow-incomplete` + `--fill-budget-minutes`, żeby zapisać postęp przed limitem 4 h; część 2 (fill) wymaga kompletnego Excela.
 
@@ -194,9 +196,9 @@ Rozszerzony wariant: `python predykcje_max.py` → `predykcje_max_2026.xlsx`.
 | Plik | Rola |
 |------|------|
 | `predykcje.py` | Pipeline 2026, Excel UA, `--fill-missing`, `--fill-budget-minutes`, `--allow-incomplete`, `--send-mail` |
-| `fill_missing.py` | JSON → Serper → BS4 → Claude → walidacja + soft deadline |
+| `fill_missing.py` | BBC live → JSON → Serper → BS4 → Claude → walidacja + soft deadline |
 | `send_mail.py` | Gmail SMTP + kopia w Wysłanych |
-| `upcoming.py` | Nadchodzące mecze (BBC) |
+| `upcoming.py` | Nadchodzące mecze + wyniki FT + boxscore BBC live |
 | `team_names.py` | Aliasy klubów (bez tłumaczenia nazw) |
 | `enrich_scores.py` | Wyniki/statystyki z football-data.co.uk |
 | `export_aleks_stats.py` | Eksport lig Aleksa |
@@ -217,15 +219,26 @@ Ligi: Premier League, La Liga, Serie A, Bundesliga, Bundesliga 2, Eredivisie, Su
 python -m pytest tests -q
 ```
 
-Kluczowe: `tests/test_predykcje.py`, `tests/test_fill_missing.py`, `tests/test_send_mail.py`.  
+Kluczowe: `tests/test_predykcje.py`, `tests/test_fill_missing.py`, `tests/test_upcoming.py`, `tests/test_send_mail.py`.  
 Na GitHubie to samo robi workflow [Testy](.github/workflows/test.yml) przy pushu na `main`.
+
+### Ręczny deploy (Actions)
+
+```powershell
+# 1) Fill (wymaga udanego discovery z artifactem predykcje-partial)
+gh workflow run pipeline-czesc2.yml --repo Bigmax1993/prognoza-meczy
+
+# 2) Po sukcesie fill mail idzie sam (workflow_run). Awaryjnie:
+gh workflow run send-mail.yml --repo Bigmax1993/prognoza-meczy
+```
 
 ---
 
 ## Ograniczenia
 
 - Claude **nie zgaduje** fauli/rożnych/kartek — brak na stronie = puste pole / residual.
-- Nordic (Allsvenskan, Eliteserien, Super League): w publicznym CSV często tylko wynik; reszta z JSON/API albo puste.
+- BBC: brak `totalYellowCard` przy istniejącym `defence` = **0** kartek (nie „brak danych”).
+- Nordic (Allsvenskan, Eliteserien, Super League): w publicznym CSV często tylko wynik; reszta z BBC/JSON/API albo puste.
 - Cloudflare na FootyStats może blokować scraper.
 - Nie tłumacz nazw klubów (Arsenal, Sarpsborg 08, Elfsborg…).
 - Limit joba GitHub Actions: **4 h** — stąd dwa etapy i `--fill-budget-minutes`.
