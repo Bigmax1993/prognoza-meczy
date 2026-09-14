@@ -322,6 +322,21 @@ def _bbc_stat_total(stats: dict[str, Any] | None, *path: str) -> int | None:
         return None
 
 
+def _bbc_yellow_cards(team_stats: dict[str, Any] | None) -> int | None:
+    """BBC często pomija totalYellowCard gdy wartość = 0 — wtedy defence i tak istnieje."""
+    stats = team_stats or {}
+    value = _bbc_stat_total(stats, "defence", "totalYellowCard")
+    if value is not None:
+        return value
+    value = _bbc_stat_total(stats, "totalYellowCard")
+    if value is not None:
+        return value
+    defence = stats.get("defence")
+    if isinstance(defence, dict) and defence:
+        return 0
+    return None
+
+
 def _find_bbc_team_stats_block(data: Any) -> dict[str, Any] | None:
     """Szuka węzła z homeTeam.stats / awayTeam.stats (match-stats)."""
     if isinstance(data, dict):
@@ -366,12 +381,8 @@ def extract_bbc_match_stats(html: str) -> dict[str, Any] | None:
     fa = _bbc_stat_total(away_stats, "foulsCommitted")
     ch = _bbc_stat_total(home_stats, "cornersWon")
     ca = _bbc_stat_total(away_stats, "cornersWon")
-    yh = _bbc_stat_total(home_stats, "defence", "totalYellowCard")
-    if yh is None:
-        yh = _bbc_stat_total(home_stats, "totalYellowCard")
-    ya = _bbc_stat_total(away_stats, "defence", "totalYellowCard")
-    if ya is None:
-        ya = _bbc_stat_total(away_stats, "totalYellowCard")
+    yh = _bbc_yellow_cards(home_stats if isinstance(home_stats, dict) else None)
+    ya = _bbc_yellow_cards(away_stats if isinstance(away_stats, dict) else None)
     sh = _bbc_stat_total(home_stats, "shotsTotal")
     sa = _bbc_stat_total(away_stats, "shotsTotal")
     soh = _bbc_stat_total(home_stats, "shotsOnTarget")

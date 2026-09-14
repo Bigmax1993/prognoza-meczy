@@ -180,6 +180,48 @@ def test_extract_bbc_match_stats_maps_ua_columns():
     assert stats["удари_в_площину"] == 5
 
 
+def test_extract_bbc_match_stats_omitted_away_yellows_are_zero():
+    """BBC pomija totalYellowCard gdy drużyna ma 0 kartek (Malmö–Örgryte)."""
+    payload = {
+        "data": {
+            "match-stats?x": {
+                "data": {
+                    "homeTeam": {
+                        "stats": {
+                            "foulsCommitted": {"total": 19},
+                            "cornersWon": {"total": 5},
+                            "shotsTotal": {"total": 25},
+                            "shotsOnTarget": {"total": 12},
+                            "defence": {
+                                "foulsCommitted": {"total": 19},
+                                "totalYellowCard": {"total": 3},
+                                "totalClearance": {"total": 13},
+                            },
+                        }
+                    },
+                    "awayTeam": {
+                        "stats": {
+                            "foulsCommitted": {"total": 11},
+                            "cornersWon": {"total": 3},
+                            "shotsTotal": {"total": 7},
+                            "shotsOnTarget": {"total": 1},
+                            "defence": {
+                                "foulsCommitted": {"total": 11},
+                                "totalClearance": {"total": 21},
+                            },
+                        }
+                    },
+                }
+            }
+        }
+    }
+    stats = up.extract_bbc_match_stats(_bbc_initial_html(payload))
+    assert stats is not None
+    assert stats["жовті_картки_господар"] == 3
+    assert stats["жовті_картки_гість"] == 0
+    assert stats["жовті_картки"] == 3
+
+
 def test_extract_bbc_match_stats_missing_block_returns_none():
     html = _bbc_initial_html({"data": {"other": {"foo": 1}}})
     assert up.extract_bbc_match_stats(html) is None
